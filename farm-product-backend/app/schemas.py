@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, List
 from pydantic import BaseModel, EmailStr
 
 class CustomerRegister(BaseModel):
@@ -32,3 +32,34 @@ class CustomerProfile(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class CategoryResponse(BaseModel):
+    id: int
+    category_name: str
+    category_image: Optional[str] = None
+    product_count: int
+
+    class Config:
+        from_attributes = True
+
+
+class ProductResponse(BaseModel):
+    id: int
+    category_id: int
+    product_name: str
+    description: Optional[str] = None
+    product_image: Optional[str] = None
+    price: float
+    stock: int
+    unit: str
+    is_featured: bool
+    is_popular: bool
+
+    class Config:
+        from_attributes = True
+
+
+class CategoryProductsResponse(BaseModel):
+    category_name: str
+    products: List[ProductResponse]

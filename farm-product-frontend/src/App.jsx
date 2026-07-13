@@ -5,6 +5,9 @@ import Register from "./pages/Register"
 import Login from "./pages/Login";
 import ForgotPassword from "./pages/ForgotPassword";
 import CustomerDashboard from "./pages/CustomerDashboard";
+import CategoryCard from "./components/CategoryCard";
+import CategoryProducts from "./pages/CategoryProducts";
+import ProductDetails from "./pages/ProductDetails";
 
 function App(){
   return(
@@ -24,7 +27,12 @@ function App(){
 
           }
           />
-
+          <Route path="/category/:id" element={<ProtectedRoute>
+            <CategoryProducts />
+          </ProtectedRoute>} />
+          <Route path="/product/:id" element={<ProtectedRoute>
+            <ProductDetails />
+          </ProtectedRoute>} />
       </Routes>
       </BrowserRouter>
     </AuthProvider>

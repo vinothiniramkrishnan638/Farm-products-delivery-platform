@@ -1,1 +1,95 @@
 @import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Poppins:wght@300;400;500;600;700;800&display=swap');
+
+:root {
+  font-family: 'Poppins', 'Outfit', system-ui, -apple-system, sans-serif;
+}
+
+body {
+  background-color: #fafbfa;
+  color: #1c1917; /* stone-900 */
+}
+
+h1, h2, h3, h4, h5, h6, .font-heading {
+  font-family: 'Outfit', sans-serif;
+}
+
+/* Page Slide In Animations */
+@keyframes slideInFromRight {
+  0% { transform: translateX(100%); opacity: 0; }
+  100% { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes slideInFromLeft {
+  0% { transform: translateX(-100%); opacity: 0; }
+  100% { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes slideInFromBottom {
+  0% { transform: translateY(100vh); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+/* Card Entry Bounce */
+@keyframes bounceIn {
+  0% { opacity: 0; transform: scale(0.92); }
+  60% { opacity: 1; transform: scale(1.025); }
+  80% { transform: scale(0.985); }
+  100% { transform: scale(1); }
+}
+
+@keyframes titleBounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+@keyframes gradientBG {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Transition & Layout Classes */
+.animate-slide-in-right {
+  animation: slideInFromRight 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+}
+
+.animate-slide-in-left {
+  animation: slideInFromLeft 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+}
+
+.animate-slide-in-bottom {
+  animation: slideInFromBottom 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+}
+
+.animate-bounce-in {
+  animation: bounceIn 0.75s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+}
+
+.animate-title-bounce {
+  display: inline-block;
+  animation: titleBounce 3s ease-in-out infinite;
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.95) !important;
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.15);
+}
+
+.animated-gradient {
+  background: linear-gradient(-45deg, #15803d, #16a34a, #22c55e, #10b981);
+  background-size: 400% 400%;
+  animation: gradientBG 12s ease infinite;
+}
+
+.hover-card-effect {
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.hover-card-effect:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 16px 32px -12px rgba(21, 128, 61, 0.2) !important;
+  border-color: rgba(22, 163, 74, 0.2);
+}
