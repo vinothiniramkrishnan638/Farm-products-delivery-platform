@@ -1,5 +1,6 @@
-from sqlalchemy import Column, Integer, String, TIMESTAMP, DECIMAL, Boolean, ForeignKey, func
-from sqlalchemy.orm import relationship
+from sqlalchemy import Column, Integer, String, TIMESTAMP, DECIMAL, Boolean, Text, ForeignKey, func, UniqueConstraint
+from sqlalchemy.orm import relationship, Mapped
+from typing import List
 from app.database import Base
 
 class Customer(Base):
@@ -23,7 +24,7 @@ class Category(Base):
     category_image = Column(String(255))
     status = Column(String(20), nullable=False, default="active")
 
-    products = relationship("Product", back_populates="category")
+    products: Mapped[List["Product"]] = relationship("Product", back_populates="category")
 
 
 class Product(Base):
@@ -34,6 +35,7 @@ class Product(Base):
     product_name = Column(String(150), nullable=False)
     description = Column(String(255))
     product_image = Column(String(255))
+    images = Column(Text)
     price = Column(DECIMAL(10, 2), nullable=False)
     stock = Column(Integer, nullable=False, default=0)
     unit = Column(String(20), nullable=False)
@@ -41,4 +43,18 @@ class Product(Base):
     is_popular = Column(Boolean, nullable=False, default=False)
     status = Column(String(20), nullable=False, default="active")
 
-    category = relationship("Category", back_populates="products")
+    category: Mapped["Category"] = relationship("Category", back_populates="products")
+    cart_items: Mapped[List["Cart"]] = relationship("Cart", back_populates="product")
+
+
+class Cart(Base):
+    __tablename__ = "cart"
+    __table_args__ = (UniqueConstraint("customer_id", "product_id", name="unique_customer_product"),)
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    customer_id = Column(String(10), ForeignKey("customers.customer_id"), nullable=False)
+    product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
+    quantity = Column(Integer, nullable=False, default=1)
+    created_at = Column(TIMESTAMP, server_default=func.now())
+
+    product: Mapped["Product"] = relationship("Product", back_populates="cart_items")

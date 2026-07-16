@@ -1,17 +1,40 @@
-@import "tailwindcss";
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Poppins:wght@300;400;500;600;700;800&display=swap');
+@import "tailwindcss";
 
 :root {
   font-family: 'Poppins', 'Outfit', system-ui, -apple-system, sans-serif;
+  --primary-green: #15803d;
+  --primary-green-dark: #166534;
+  --primary-green-light: #22c55e;
+  --bg-nature: #fafbfa;
+  --stone-main: #1c1917;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+  height: 100%;
 }
 
 body {
-  background-color: #fafbfa;
-  color: #1c1917; /* stone-900 */
+  background-color: #1a1a1a; /* Dark fallback - no white shows through on auth pages */
+  color: var(--stone-main);
+  background-attachment: fixed;
 }
 
 h1, h2, h3, h4, h5, h6, .font-heading {
   font-family: 'Outfit', sans-serif;
+}
+
+/* Page Transitions */
+.page-fade-in {
+  animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 /* Page Slide In Animations */
@@ -49,7 +72,6 @@ h1, h2, h3, h4, h5, h6, .font-heading {
   100% { background-position: 0% 50%; }
 }
 
-/* Transition & Layout Classes */
 .animate-slide-in-right {
   animation: slideInFromRight 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
 }
@@ -71,11 +93,27 @@ h1, h2, h3, h4, h5, h6, .font-heading {
   animation: titleBounce 3s ease-in-out infinite;
 }
 
+/* Glassmorphism Styles */
+.glass-header {
+  background: linear-gradient(135deg, rgba(21, 128, 61, 0.96), rgba(22, 101, 52, 0.96)) !important;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.glass-navbar {
+  background: rgba(255, 255, 255, 0.88) !important;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(229, 231, 235, 0.5);
+}
+
 .glass-card {
-  background: rgba(255, 255, 255, 0.95) !important;
+  background: rgba(255, 255, 255, 0.85) !important;
   backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.15);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(229, 231, 235, 0.5);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
 }
 
 .animated-gradient {
@@ -84,12 +122,61 @@ h1, h2, h3, h4, h5, h6, .font-heading {
   animation: gradientBG 12s ease infinite;
 }
 
+/* Advanced Card Transitions */
 .hover-card-effect {
   transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .hover-card-effect:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 16px 32px -12px rgba(21, 128, 61, 0.2) !important;
-  border-color: rgba(22, 163, 74, 0.2);
+  transform: translateY(-6px) scale(1.01);
+  box-shadow: 0 20px 30px -10px rgba(21, 128, 61, 0.18) !important;
+  border-color: rgba(34, 197, 94, 0.35) !important;
+}
+
+.hover-category-effect {
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.hover-category-effect:hover {
+  transform: translateY(-4px) scale(1.025);
+  background-color: #f0fdf4 !important;
+  box-shadow: 0 16px 24px -10px rgba(21, 128, 61, 0.14) !important;
+  border-color: rgba(34, 197, 94, 0.3) !important;
+}
+
+.hover-category-effect:hover img {
+  transform: scale(1.08) rotate(2deg);
+}
+
+.hover-category-effect img {
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Shimmer CTA Button Effect */
+@keyframes buttonShimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.shimmer-button {
+  background: linear-gradient(90deg, #16a34a 25%, #4ade80 50%, #16a34a 75%);
+  background-size: 200% 100%;
+  animation: buttonShimmer 5s infinite linear;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.shimmer-button:hover:not(:disabled) {
+  box-shadow: 0 8px 24px -6px rgba(22, 163, 74, 0.45);
+  transform: translateY(-1px);
+}
+
+/* Glow inputs on focus */
+.glow-input {
+  transition: all 0.3s ease;
+}
+
+.glow-input:focus {
+  border-color: #22c55e !important;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.22) !important;
+  outline: none;
 }

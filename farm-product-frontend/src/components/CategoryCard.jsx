@@ -27,15 +27,15 @@ const CategoryCard = ({ category }) => {
   return (
     <div
       onClick={handleClick}
-      className="bg-white rounded-xl shadow-sm border border-gray-100 p-3 flex flex-col items-center text-center cursor-pointer hover-card-effect active:scale-95 transition-all duration-300"
+      className="bg-white rounded-xl border border-gray-100/60 p-4 flex flex-col items-center text-center cursor-pointer hover-category-effect active:scale-95 shadow-sm"
     >
-      <div className="w-16 h-16 rounded-full overflow-hidden bg-green-100 flex items-center justify-center mb-2">
+      <div className="w-16 h-16 rounded-full overflow-hidden bg-green-50 flex items-center justify-center mb-2">
         {!imgError && getCategoryImage() ? (
           <img
             src={getCategoryImage()}
             alt={category.category_name}
             onError={() => setImgError(true)}
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover transition-transform duration-500"
           />
         ) : (
           <span className="text-green-700 font-bold text-lg">

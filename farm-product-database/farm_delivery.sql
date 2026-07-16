@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS products (
     FOREIGN KEY (category_id) REFERENCES categories(id)
 );
 
--- Seed Categories
+
 INSERT INTO categories (id, category_name, category_image, status) VALUES
 (1, 'Milk & Dairy', 'https://images.unsplash.com/photo-1550583724-b2692b85b150?auto=format&fit=crop&q=80&w=300', 'active'),
 (2, 'Goat Farm', 'https://images.unsplash.com/photo-1524024412-3e1209782377?auto=format&fit=crop&q=80&w=300', 'active'),
@@ -48,7 +48,7 @@ INSERT INTO categories (id, category_name, category_image, status) VALUES
 (10, 'Meat', 'https://images.unsplash.com/photo-1603048588665-791ca8aea617?auto=format&fit=crop&q=80&w=300', 'active')
 ON DUPLICATE KEY UPDATE category_name=VALUES(category_name), category_image=VALUES(category_image);
 
--- Seed Products
+
 INSERT INTO products (category_id, product_name, description, product_image, price, stock, unit, is_featured, is_popular, status) VALUES
 (1, 'Fresh Cow Milk', 'Pure organic fresh cow milk from local village cows', '', 45.00, 100, 'Litre', TRUE, TRUE, 'active'),
 (1, 'Goat Milk', 'Fresh raw goat milk, easy to digest and highly nutritious', '', 80.00, 50, 'Litre', TRUE, FALSE, 'active'),
@@ -60,3 +60,17 @@ INSERT INTO products (category_id, product_name, description, product_image, pri
 (7, 'Fresh Water Prawn', 'Jumbo prawns caught from local freshwater lakes', '', 450.00, 25, 'Kg', TRUE, TRUE, 'active'),
 (8, 'Sea Prawn', 'Fresh tiger sea prawns clean and whole', '', 550.00, 15, 'Kg', FALSE, FALSE, 'active'),
 (9, 'Mud Crab', 'Large fresh mud crabs caught daily', '', 600.00, 10, 'Piece', FALSE, TRUE, 'active');
+
+
+ALTER TABLE products ADD COLUMN images TEXT;
+
+CREATE TABLE IF NOT EXISTS cart (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    customer_id VARCHAR(10) NOT NULL,
+    product_id INT NOT NULL,
+    quantity INT NOT NULL DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (customer_id) REFERENCES customers(customer_id),
+    FOREIGN KEY (product_id) REFERENCES products(id),
+    UNIQUE KEY unique_customer_product (customer_id, product_id)
+);

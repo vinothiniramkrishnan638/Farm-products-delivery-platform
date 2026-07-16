@@ -62,7 +62,7 @@ const CustomerDashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#fafbfa] animate-slide-in-bottom">
+    <div className="min-h-screen bg-[#fafbfa] page-fade-in">
       <Header />
       <Navbar />
       <SearchBar onSearch={handleSearch} onClear={handleClearSearch} />

@@ -1,5 +1,5 @@
 from typing import Optional, List
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, ConfigDict
 
 class CustomerRegister(BaseModel):
     full_name: str
@@ -30,8 +30,7 @@ class CustomerProfile(BaseModel):
     email: str
     village: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class CategoryResponse(BaseModel):
@@ -40,8 +39,7 @@ class CategoryResponse(BaseModel):
     category_image: Optional[str] = None
     product_count: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ProductResponse(BaseModel):
@@ -56,10 +54,44 @@ class ProductResponse(BaseModel):
     is_featured: bool
     is_popular: bool
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ProductDetailResponse(BaseModel):
+    id: int
+    category_id: int
+    category_name: str
+    product_name: str
+    description: Optional[str] = None
+    product_image: Optional[str] = None
+    images: List[str] = []
+    price: float
+    stock: int
+    unit: str
+    is_featured: bool
+    is_popular: bool
 
 
 class CategoryProductsResponse(BaseModel):
     category_name: str
     products: List[ProductResponse]
+
+
+class AddToCartRequest(BaseModel):
+    product_id: int
+    quantity: int = 1
+
+
+class UpdateCartRequest(BaseModel):
+    quantity: int
+
+
+class CartItemResponse(BaseModel):
+    cart_id: int
+    product_id: int
+    product_name: str
+    product_image: Optional[str] = None
+    price: float
+    unit: str
+    stock: int
+    quantity: int

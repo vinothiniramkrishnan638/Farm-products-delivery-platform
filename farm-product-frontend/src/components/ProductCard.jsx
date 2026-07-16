@@ -4,18 +4,29 @@ import countryChicken from "../assets/country_chicken.jpg";
 import countryEggs from "../assets/country_eggs.jpg";
 import freshWaterPrawn from "../assets/fresh_water_prawn.jpg";
 import goatMilk from "../assets/goat_milk.jpg";
+import { useCart } from "../context/CartContext";
 
 const ProductCard = ({ product }) => {
   const [imgError, setImgError] = useState(false);
   const [added, setAdded] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const { addToCart } = useCart();
 
   useEffect(() => {
     setImgError(false);
   }, [product]);
 
-  const handleAddToCart = () => {
-    setAdded(true);
-    setTimeout(() => setAdded(false), 1500);
+  const handleAddToCart = async () => {
+    try {
+      setAdding(true);
+      await addToCart(product.id, 1);
+      setAdded(true);
+      setTimeout(() => setAdded(false), 1500);
+    } catch (err) {
+      setAdded(false);
+    } finally {
+      setAdding(false);
+    }
   };
 
   const outOfStock = product.stock <= 0;
@@ -32,14 +43,14 @@ const ProductCard = ({ product }) => {
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col hover-card-effect transition-all duration-300">
+    <div className="bg-white rounded-xl border border-gray-100/70 overflow-hidden flex flex-col hover-card-effect shadow-sm">
       <div className="w-full h-40 bg-gray-100 flex items-center justify-center relative overflow-hidden">
         {!imgError && getProductImage() ? (
           <img
             src={getProductImage()}
             alt={product.product_name}
             onError={() => setImgError(true)}
-            className="w-full h-full object-contain bg-gray-50 p-2"
+            className="w-full h-full object-contain bg-gray-50 p-2 transition-transform duration-500 hover:scale-105"
           />
         ) : (
           <span className="text-gray-400 text-xs">No Image</span>
@@ -54,7 +65,7 @@ const ProductCard = ({ product }) => {
           <p className="text-green-700 font-bold text-sm">
             ₹{product.price} <span className="text-gray-400 font-normal text-xs">/ {product.unit}</span>
           </p>
-          <p className={`text-xs font-medium ${outOfStock ? "text-red-500" : "text-gray-400"}`}>
+          <p className={`text-xs font-semibold ${outOfStock ? "text-red-500" : "text-gray-400"}`}>
             {outOfStock ? "Out of Stock" : `${product.stock} left`}
           </p>
         </div>
@@ -62,14 +73,14 @@ const ProductCard = ({ product }) => {
         <div className="flex gap-2 mt-3">
           <button
             onClick={handleAddToCart}
-            disabled={outOfStock}
-            className="flex-1 bg-green-600 text-white text-xs font-semibold py-2 rounded-lg disabled:opacity-50 hover:bg-green-700 active:scale-95 transition-all duration-150 shadow-sm hover:shadow"
+            disabled={outOfStock || adding}
+            className="flex-1 shimmer-button text-white text-xs font-bold py-2.5 rounded-xl disabled:opacity-40 disabled:pointer-events-none active:scale-95 shadow-sm"
           >
-            {added ? "Added ✓" : "Add to Cart"}
+            {added ? "Added ✓" : adding ? "Adding..." : "Add to Cart"}
           </button>
           <Link
             to={`/product/${product.id}`}
-            className="flex-1 border border-green-600 text-green-700 text-xs font-semibold py-2 rounded-lg text-center hover:bg-green-50 active:scale-95 transition-all duration-150 shadow-sm"
+            className="flex-1 border-2 border-green-600 text-green-700 text-xs font-bold py-2.5 rounded-xl text-center hover:bg-green-50 active:scale-95 transition-all duration-150 shadow-sm"
           >
             View Details
           </Link>

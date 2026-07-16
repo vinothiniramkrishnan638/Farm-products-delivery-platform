@@ -33,7 +33,7 @@ const CategoryProducts = () => {
   }, [id]);
 
   return (
-    <div className="min-h-screen bg-[#fafbfa]">
+    <div className="min-h-screen bg-[#fafbfa] page-fade-in">
       <Header />
       <Navbar />
 
