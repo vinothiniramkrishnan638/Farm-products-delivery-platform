@@ -136,7 +136,7 @@ def forgot_password(payload: ForgotPasswordRequest, db: Session = Depends(get_db
     reset_code = str(random.randint(100000, 999999))
     print(f"Reset code for {payload.login_id}: {reset_code}")
 
-    return {"message": "Reset code sent successfully. Check your terminal/device."}
+    return {"message": "Reset code sent successfully.", "reset_code": reset_code}
 
 @app.post("/api/customer/send-otp")
 def send_otp(payload: SendOtpRequest, db: Session = Depends(get_db)):
@@ -147,7 +147,7 @@ def send_otp(payload: SendOtpRequest, db: Session = Depends(get_db)):
     otp = generate_otp(payload.mobile_number)
     print(f"OTP for {payload.mobile_number}: {otp}")
 
-    return {"message": "OTP sent successfully"}
+    return {"message": "OTP sent successfully", "otp": otp}
 
 @app.post("/api/customer/verify-otp")
 def verify_otp_login(payload: VerifyOtpRequest, db: Session = Depends(get_db)):
