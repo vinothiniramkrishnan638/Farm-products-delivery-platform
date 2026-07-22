@@ -58,3 +58,46 @@ class Cart(Base):
     created_at = Column(TIMESTAMP, server_default=func.now())
 
     product: Mapped["Product"] = relationship("Product", back_populates="cart_items")
+    
+class CustomerAddress(Base):
+    __tablename__ = "customer_addresses"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    customer_id = Column(String(10), ForeignKey("customers.customer_id"), nullable=False)
+    full_name = Column(String(100), nullable=False)
+    mobile_number = Column(String(10), nullable=False)
+    address = Column(String(255), nullable=False)
+    village = Column(String(100), nullable=False)
+    district = Column(String(100), nullable=False)
+    state = Column(String(100), nullable=False)
+    pincode = Column(String(6), nullable=False)
+    landmark = Column(String(150))
+    is_default = Column(Boolean, nullable=False, default=False)
+
+
+class Order(Base):
+    __tablename__ = "orders"
+
+    order_id = Column(String(20), primary_key=True)
+    customer_id = Column(String(10), ForeignKey("customers.customer_id"), nullable=False)
+    address_id = Column(Integer, ForeignKey("customer_addresses.id"), nullable=False)
+    total_amount = Column(DECIMAL(10, 2), nullable=False)
+    payment_method = Column(String(20), nullable=False)
+    order_status = Column(String(30), nullable=False, default="Pending")
+    created_at = Column(TIMESTAMP, server_default=func.now())
+
+    address: Mapped["CustomerAddress"] = relationship("CustomerAddress")
+    items: Mapped[List["OrderItem"]] = relationship("OrderItem", back_populates="order")
+
+
+class OrderItem(Base):
+    __tablename__ = "order_items"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    order_id = Column(String(20), ForeignKey("orders.order_id"), nullable=False)
+    product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
+    quantity = Column(Integer, nullable=False)
+    price = Column(DECIMAL(10, 2), nullable=False)
+
+    order: Mapped["Order"] = relationship("Order", back_populates="items")
+    product: Mapped["Product"] = relationship("Product")    

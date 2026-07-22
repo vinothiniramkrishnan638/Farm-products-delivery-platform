@@ -29,7 +29,7 @@ const CategoryCard = ({ category }) => {
       onClick={handleClick}
       className="bg-white rounded-xl border border-gray-100/60 p-4 flex flex-col items-center text-center cursor-pointer hover-category-effect active:scale-95 shadow-sm"
     >
-      <div className="w-16 h-16 rounded-full overflow-hidden bg-green-50 flex items-center justify-center mb-2">
+      <div className="w-16 h-16 rounded-full overflow-hidden bg-green-50 flex items-center justify-center mb-2 ring-2 ring-green-100 shadow-inner">
         {!imgError && getCategoryImage() ? (
           <img
             src={getCategoryImage()}

@@ -93,7 +93,7 @@ const Navbar = () => {
     };
 
     return (
-        <div className="w-full glass-navbar border-b border-gray-200/50 px-4 py-2 flex justify-between items-center sticky top-[52px] z-10 shadow-sm">
+        <div className="w-full glass-navbar border-b border-gray-200/50 px-4 py-2 flex justify-between items-center sticky top-13 z-10 shadow-sm">
             <div className="flex-1 min-w-0 flex gap-5 overflow-x-auto py-1 mr-2">
                 <button
                     onClick={handleHomeClick}

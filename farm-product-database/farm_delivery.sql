@@ -74,3 +74,40 @@ CREATE TABLE IF NOT EXISTS cart (
     FOREIGN KEY (product_id) REFERENCES products(id),
     UNIQUE KEY unique_customer_product (customer_id, product_id)
 );
+
+CREATE TABLE IF NOT EXISTS customer_addresses (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    customer_id VARCHAR(10) NOT NULL,
+    full_name VARCHAR(100) NOT NULL,
+    mobile_number VARCHAR(10) NOT NULL,
+    address VARCHAR(255) NOT NULL,
+    village VARCHAR(100) NOT NULL,
+    district VARCHAR(100) NOT NULL,
+    state VARCHAR(100) NOT NULL,
+    pincode VARCHAR(6) NOT NULL,
+    landmark VARCHAR(150),
+    is_default BOOLEAN NOT NULL DEFAULT FALSE,
+    FOREIGN KEY (customer_id) REFERENCES customers(customer_id)
+);
+
+CREATE TABLE IF NOT EXISTS orders (
+    order_id VARCHAR(20) PRIMARY KEY,
+    customer_id VARCHAR(10) NOT NULL,
+    address_id INT NOT NULL,
+    total_amount DECIMAL(10,2) NOT NULL,
+    payment_method ENUM('COD', 'ONLINE') NOT NULL,
+    order_status ENUM('Pending', 'Confirmed', 'Preparing', 'Out for Delivery', 'Delivered', 'Cancelled') NOT NULL DEFAULT 'Pending',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (customer_id) REFERENCES customers(customer_id),
+    FOREIGN KEY (address_id) REFERENCES customer_addresses(id)
+);
+
+CREATE TABLE IF NOT EXISTS order_items (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    order_id VARCHAR(20) NOT NULL,
+    product_id INT NOT NULL,
+    quantity INT NOT NULL,
+    price DECIMAL(10,2) NOT NULL,
+    FOREIGN KEY (order_id) REFERENCES orders(order_id),
+    FOREIGN KEY (product_id) REFERENCES products(id)
+);

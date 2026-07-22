@@ -7,13 +7,19 @@ from sqlalchemy.orm import Session
 from sqlalchemy import or_
 
 from app.database import Base, engine, get_db
-from app.models import Customer, Category, Product, Cart
+from app.models import Customer, Category, Product, Cart, CustomerAddress, Order, OrderItem
 from app.schemas import (
     CustomerRegister, CustomerLogin, SendOtpRequest, VerifyOtpRequest,
     CustomerProfile, ForgotPasswordRequest, CategoryResponse, ProductResponse,
     CategoryProductsResponse, ProductDetailResponse, AddToCartRequest,
-    UpdateCartRequest, CartItemResponse,
+    UpdateCartRequest, CartItemResponse, AddressRequest, AddressResponse,
+    PlaceOrderRequest, PlaceOrderResponse, OrderItemResponse, OrderAddressResponse,
+    OrderDetailResponse,
 )
+
+def generate_order_id(db: Session) -> str:
+    count = db.query(Order).count() + 1
+    return f"ORD{count:03d}"
 from app.auth_utils import (
     hash_password,
     verify_password,
@@ -135,7 +141,10 @@ def forgot_password(payload: ForgotPasswordRequest, db: Session = Depends(get_db
     reset_code = str(random.randint(100000, 999999))
     print(f"Reset code for {payload.login_id}: {reset_code}")
 
-    return {"message": "Reset code sent successfully. Check your terminal/device."}
+    return {
+        "message": "Reset code sent successfully. Check your terminal/device.",
+        "reset_code": reset_code
+    }
 
 @app.post("/api/customer/send-otp")
 def send_otp(payload: SendOtpRequest, db: Session = Depends(get_db)):
@@ -146,7 +155,10 @@ def send_otp(payload: SendOtpRequest, db: Session = Depends(get_db)):
     otp = generate_otp(payload.mobile_number)
     print(f"OTP for {payload.mobile_number}: {otp}")
 
-    return {"message": "OTP sent successfully"}
+    return {
+        "message": "OTP sent successfully",
+        "otp": otp
+    }
 
 @app.post("/api/customer/verify-otp")
 def verify_otp_login(payload: VerifyOtpRequest, db: Session = Depends(get_db)):
@@ -379,3 +391,188 @@ def remove_cart_item(cart_id: int, current_customer: Customer = Depends(get_curr
     db.commit()
 
     return {"message": "Item removed from cart successfully"}
+
+@app.get("/api/addresses", response_model=List[AddressResponse])
+def get_addresses(current_customer: Customer = Depends(get_current_customer), db: Session = Depends(get_db)):
+    addresses = db.query(CustomerAddress).filter(
+        CustomerAddress.customer_id == current_customer.customer_id
+    ).all()
+    return addresses
+
+@app.post("/api/addresses", response_model=AddressResponse)
+def add_address(payload: AddressRequest, current_customer: Customer = Depends(get_current_customer), db: Session = Depends(get_db)):
+    if payload.is_default:
+        db.query(CustomerAddress).filter(
+            CustomerAddress.customer_id == current_customer.customer_id
+        ).update({"is_default": False})
+
+    existing_count = db.query(CustomerAddress).filter(
+        CustomerAddress.customer_id == current_customer.customer_id
+    ).count()
+
+    new_address = CustomerAddress(
+        customer_id=current_customer.customer_id,
+        full_name=payload.full_name,
+        mobile_number=payload.mobile_number,
+        address=payload.address,
+        village=payload.village,
+        district=payload.district,
+        state=payload.state,
+        pincode=payload.pincode,
+        landmark=payload.landmark,
+        is_default=payload.is_default or existing_count == 0,
+    )
+    db.add(new_address)
+    db.commit()
+    db.refresh(new_address)
+
+    return new_address
+
+@app.put("/api/addresses/{address_id}", response_model=AddressResponse)
+def update_address(address_id: int, payload: AddressRequest, current_customer: Customer = Depends(get_current_customer), db: Session = Depends(get_db)):
+    address = db.query(CustomerAddress).filter(
+        CustomerAddress.id == address_id,
+        CustomerAddress.customer_id == current_customer.customer_id
+    ).first()
+
+    if not address:
+        raise HTTPException(status_code=404, detail="Address not found")
+
+    if payload.is_default:
+        db.query(CustomerAddress).filter(
+            CustomerAddress.customer_id == current_customer.customer_id,
+            CustomerAddress.id != address_id
+        ).update({"is_default": False})
+
+    address.full_name = payload.full_name
+    address.mobile_number = payload.mobile_number
+    address.address = payload.address
+    address.village = payload.village
+    address.district = payload.district
+    address.state = payload.state
+    address.pincode = payload.pincode
+    address.landmark = payload.landmark
+    address.is_default = payload.is_default
+
+    db.commit()
+    db.refresh(address)
+
+    return address
+
+@app.delete("/api/addresses/{address_id}")
+def delete_address(address_id: int, current_customer: Customer = Depends(get_current_customer), db: Session = Depends(get_db)):
+    address = db.query(CustomerAddress).filter(
+        CustomerAddress.id == address_id,
+        CustomerAddress.customer_id == current_customer.customer_id
+    ).first()
+
+    if not address:
+        raise HTTPException(status_code=404, detail="Address not found")
+
+    was_default = address.is_default
+
+    db.delete(address)
+    db.commit()
+
+    if was_default:
+        next_address = db.query(CustomerAddress).filter(
+            CustomerAddress.customer_id == current_customer.customer_id
+        ).first()
+        if next_address:
+            next_address.is_default = True
+            db.commit()
+
+    return {"message": "Address deleted successfully"}
+
+@app.post("/api/orders", response_model=PlaceOrderResponse)
+def place_order(payload: PlaceOrderRequest, current_customer: Customer = Depends(get_current_customer), db: Session = Depends(get_db)):
+    address = db.query(CustomerAddress).filter(
+        CustomerAddress.id == payload.address_id,
+        CustomerAddress.customer_id == current_customer.customer_id
+    ).first()
+    if not address:
+        raise HTTPException(status_code=404, detail="Address not found")
+
+    if payload.payment_method not in ["COD", "ONLINE"]:
+        raise HTTPException(status_code=400, detail="Invalid payment method")
+
+    cart_items = db.query(Cart).filter(Cart.customer_id == current_customer.customer_id).all()
+    if not cart_items:
+        raise HTTPException(status_code=400, detail="Your cart is empty")
+
+    total_amount = 0
+    for item in cart_items:
+        if item.quantity > item.product.stock:
+            raise HTTPException(status_code=400, detail=f"{item.product.product_name} has insufficient stock")
+        total_amount += float(item.product.price) * item.quantity
+
+    delivery_charge = 0 if total_amount >= 500 or total_amount == 0 else 40
+    grand_total = total_amount + delivery_charge
+
+    new_order_id = generate_order_id(db)
+
+    new_order = Order(
+        order_id=new_order_id,
+        customer_id=current_customer.customer_id,
+        address_id=payload.address_id,
+        total_amount=grand_total,
+        payment_method=payload.payment_method,
+        order_status="Pending",
+    )
+    db.add(new_order)
+
+    for item in cart_items:
+        order_item = OrderItem(
+            order_id=new_order_id,
+            product_id=item.product_id,
+            quantity=item.quantity,
+            price=item.product.price,
+        )
+        db.add(order_item)
+        prod = db.query(Product).filter(Product.id == item.product_id).first()
+        if prod:
+            prod.stock = max(0, prod.stock - item.quantity)
+
+    for item in cart_items:
+        db.delete(item)
+
+    db.commit()
+
+    return {"message": "Order placed successfully", "order_id": new_order_id}
+
+@app.get("/api/orders/{order_id}", response_model=OrderDetailResponse)
+def get_order_details(order_id: str, current_customer: Customer = Depends(get_current_customer), db: Session = Depends(get_db)):
+    order = db.query(Order).filter(
+        Order.order_id == order_id,
+        Order.customer_id == current_customer.customer_id
+    ).first()
+
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    items = [
+        {
+            "product_name": item.product.product_name,
+            "quantity": item.quantity,
+            "price": item.price,
+        }
+        for item in order.items
+    ]
+
+    return {
+        "order_id": order.order_id,
+        "total_amount": order.total_amount,
+        "payment_method": order.payment_method,
+        "order_status": order.order_status,
+        "created_at": order.created_at.strftime("%d %b %Y, %I:%M %p"),
+        "delivery_address": {
+            "full_name": order.address.full_name,
+            "mobile_number": order.address.mobile_number,
+            "address": order.address.address,
+            "village": order.address.village,
+            "district": order.address.district,
+            "state": order.address.state,
+            "pincode": order.address.pincode,
+        },
+        "items": items,
+    }

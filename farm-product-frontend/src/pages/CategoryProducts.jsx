@@ -33,41 +33,43 @@ const CategoryProducts = () => {
   }, [id]);
 
   return (
-    <div className="min-h-screen bg-[#fafbfa] page-fade-in">
-      <Header />
-      <Navbar />
+    <div className="min-h-screen bg-[#fafbfa] page-fade-in flex flex-col justify-between">
+      <div className="flex-1">
+        <Header />
+        <Navbar />
 
-      <div className="px-4 py-4 flex items-center gap-3">
-        <button
-          onClick={() => navigate("/customer/dashboard")}
-          className="text-green-700 hover:text-green-800 font-bold text-sm bg-green-50 px-3 py-1.5 rounded-lg active:scale-95 transition-all shadow-sm"
-        >
-          ← Back
-        </button>
-        <h2 className="font-extrabold text-xl text-gray-800 tracking-tight font-heading">
-          {categoryName || "Category Products"}
-        </h2>
-      </div>
-
-      {loading && <Loader text="Loading products..." />}
-
-      {error && (
-        <div className="mx-4 my-3 bg-red-100 text-red-700 text-sm font-semibold border border-red-200 rounded-lg px-3 py-2.5">
-          {error}
+        <div className="px-4 py-4 flex items-center gap-3">
+          <button
+            onClick={() => navigate("/customer/dashboard")}
+            className="text-green-700 hover:text-green-800 font-bold text-sm bg-green-50 px-3 py-1.5 rounded-lg active:scale-95 transition-all shadow-sm"
+          >
+            ← Back
+          </button>
+          <h2 className="font-extrabold text-xl text-gray-800 tracking-tight font-heading">
+            {categoryName || "Category Products"}
+          </h2>
         </div>
-      )}
 
-      {!loading && !error && (
-        products.length === 0 ? (
-          <p className="text-gray-400 text-sm text-center py-12">No products found in this category.</p>
-        ) : (
-          <div className="grid grid-cols-2 gap-3 px-4 pb-6">
-            {products.map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
+        {loading && <Loader text="Loading products..." />}
+
+        {error && (
+          <div className="mx-4 my-3 bg-red-100 text-red-700 text-sm font-semibold border border-red-200 rounded-lg px-3 py-2.5">
+            {error}
           </div>
-        )
-      )}
+        )}
+
+        {!loading && !error && (
+          products.length === 0 ? (
+            <p className="text-gray-400 text-sm text-center py-12">No products found in this category.</p>
+          ) : (
+            <div className="grid grid-cols-2 gap-3 px-4 pb-6">
+              {products.map((product) => (
+                <ProductCard key={product.id} product={product} />
+              ))}
+            </div>
+          )
+        )}
+      </div>
 
       <Footer />
     </div>

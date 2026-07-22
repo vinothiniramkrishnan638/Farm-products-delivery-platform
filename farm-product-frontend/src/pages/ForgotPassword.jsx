@@ -9,17 +9,23 @@ const ForgotPassword = () => {
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [testResetCode, setTestResetCode] = useState("");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     setSuccessMessage("");
+    setTestResetCode("");
     try {
       setLoading(true);
       const res = await api.post("/customer/forgot-password", {
         login_id: loginId,
       });
       setSuccessMessage(res.data.message || "Reset code sent successfully. Check your terminal/device.");
+      if (res.data && res.data.reset_code) {
+        setTestResetCode(res.data.reset_code);
+        console.log("DEMO RESET CODE GENERATED:", res.data.reset_code);
+      }
     } catch (err) {
       setError(err.response?.data?.detail || "Something went wrong. Please try again.");
     } finally {
@@ -56,6 +62,11 @@ const ForgotPassword = () => {
               <div className="bg-green-100 text-green-700 text-sm rounded-lg px-3 py-2 font-medium">
                 {successMessage}
               </div>
+              {testResetCode && (
+                <div className="bg-green-50 border border-green-200 text-green-800 text-xs rounded-lg p-2.5 mb-2 text-center font-semibold animate-pulse">
+                  🔑 Test Reset Code: <span className="text-base select-all tracking-wider font-extrabold">{testResetCode}</span>
+                </div>
+              )}
               <Link
                 to="/login"
                 className="block w-full text-center bg-green-600 text-white font-semibold py-2.5 rounded-lg hover:bg-green-700 transition-colors shadow-sm"

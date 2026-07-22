@@ -17,6 +17,7 @@ const Login = () => {
   const [otpSent, setOtpSent] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [testOtp, setTestOtp] = useState("");
 
   const handlePasswordLogin = async (e) => {
     e.preventDefault();
@@ -38,14 +39,19 @@ const Login = () => {
 
   const handleSendOtp = async () => {
     setError("");
+    setTestOtp("");
     if (mobileNumber.length !== 10) {
       setError("Enter a valid 10 digit mobile number");
       return;
     }
     try {
       setLoading(true);
-      await api.post("/customer/send-otp", { mobile_number: mobileNumber });
+      const res = await api.post("/customer/send-otp", { mobile_number: mobileNumber });
       setOtpSent(true);
+      if (res.data && res.data.otp) {
+        setTestOtp(res.data.otp);
+        console.log("DEMO OTP GENERATED:", res.data.otp);
+      }
     } catch (err) {
       setError(err.response?.data?.detail || "Failed to send OTP");
     } finally {
@@ -189,6 +195,12 @@ const Login = () => {
                 placeholder="10 digit mobile number"
               />
             </div>
+
+            {testOtp && (
+              <div className="bg-green-50 border border-green-200 text-green-800 text-xs rounded-lg p-2.5 mb-2 text-center font-semibold animate-pulse">
+                🔑 Test OTP: <span className="text-base select-all tracking-wider font-extrabold">{testOtp}</span>
+              </div>
+            )}
 
             {!otpSent ? (
               <button

@@ -109,24 +109,23 @@ const Cart = () => {
               </div>
             </div>
 
-            {showCheckoutNote && (
-              <div className="bg-green-50 text-green-700 text-sm font-medium rounded-lg px-4 py-3 mt-4 text-center">
-                Checkout will be available in an upcoming module.
-              </div>
-            )}
-
             <div className="flex gap-3 mt-5">
+              {/* Button A: Short Text-Only Button */}
               <button
                 onClick={() => navigate("/customer/dashboard")}
-                className="flex-1 border-2 border-green-600 text-green-700 font-bold py-3 rounded-2xl hover:bg-green-50 transition-colors active:scale-95"
+                className="flex-1 h-12 border-2 border-green-600 text-green-700 font-extrabold text-sm rounded-2xl hover:bg-green-50 transition-colors active:scale-95 flex items-center justify-center"
               >
-                Continue Shopping
+                Shop
               </button>
+              {/* Button B: Icon-Only Button */}
               <button
-                onClick={() => setShowCheckoutNote(true)}
-                className="flex-1 shimmer-button text-white font-bold py-3 rounded-2xl shadow-sm active:scale-95"
+                onClick={() => navigate("/checkout")}
+                title="Proceed to Checkout"
+                className="flex-1 h-12 shimmer-button text-white font-bold rounded-2xl shadow-sm active:scale-95 flex items-center justify-center"
               >
-                Proceed to Checkout
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-6 h-6">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z" />
+                </svg>
               </button>
             </div>
           </>

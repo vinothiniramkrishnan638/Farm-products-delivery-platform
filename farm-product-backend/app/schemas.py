@@ -95,3 +95,64 @@ class CartItemResponse(BaseModel):
     unit: str
     stock: int
     quantity: int
+class AddressRequest(BaseModel):
+    full_name: str
+    mobile_number: str
+    address: str
+    village: str
+    district: str
+    state: str
+    pincode: str
+    landmark: Optional[str] = None
+    is_default: bool = False
+
+
+class AddressResponse(BaseModel):
+    id: int
+    full_name: str
+    mobile_number: str
+    address: str
+    village: str
+    district: str
+    state: str
+    pincode: str
+    landmark: Optional[str] = None
+    is_default: bool
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PlaceOrderRequest(BaseModel):
+    address_id: int
+    payment_method: str
+
+
+class OrderItemResponse(BaseModel):
+    product_name: str
+    quantity: int
+    price: float
+
+
+class OrderAddressResponse(BaseModel):
+    full_name: str
+    mobile_number: str
+    address: str
+    village: str
+    district: str
+    state: str
+    pincode: str
+
+
+class OrderDetailResponse(BaseModel):
+    order_id: str
+    total_amount: float
+    payment_method: str
+    order_status: str
+    created_at: str
+    delivery_address: OrderAddressResponse
+    items: List[OrderItemResponse]
+
+
+class PlaceOrderResponse(BaseModel):
+    message: str
+    order_id: str   
