@@ -15,6 +15,7 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [otp, setOtp] = useState("");
   const [otpSent, setOtpSent] = useState(false);
+  const [receivedOtp, setReceivedOtp] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [testOtp, setTestOtp] = useState("");
@@ -39,7 +40,7 @@ const Login = () => {
 
   const handleSendOtp = async () => {
     setError("");
-    setTestOtp("");
+    setReceivedOtp("");
     if (mobileNumber.length !== 10) {
       setError("Enter a valid 10 digit mobile number");
       return;
@@ -47,6 +48,7 @@ const Login = () => {
     try {
       setLoading(true);
       const res = await api.post("/customer/send-otp", { mobile_number: mobileNumber });
+      setReceivedOtp(res.data.otp || "");
       setOtpSent(true);
       if (res.data && res.data.otp) {
         setTestOtp(res.data.otp);
@@ -108,6 +110,7 @@ const Login = () => {
               setMethod("otp");
               setError("");
               setOtpSent(false);
+              setReceivedOtp("");
             }}
             className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
               method === "otp" ? "bg-green-600 text-white shadow-sm" : "text-gray-500 hover:text-gray-700"
@@ -213,6 +216,11 @@ const Login = () => {
               </button>
             ) : (
               <>
+                {receivedOtp && (
+                  <div className="bg-yellow-100 text-yellow-800 text-center text-lg font-bold rounded-lg px-3 py-3 tracking-widest">
+                    {receivedOtp}
+                  </div>
+                )}
                 <div>
                   <label className="text-sm font-semibold text-gray-700">Enter OTP</label>
                   <input
@@ -234,7 +242,10 @@ const Login = () => {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setOtpSent(false)}
+                  onClick={() => {
+                    setOtpSent(false);
+                    setReceivedOtp("");
+                  }}
                   className="w-full text-sm font-semibold text-gray-500 hover:text-gray-700"
                 >
                   Change Mobile Number
