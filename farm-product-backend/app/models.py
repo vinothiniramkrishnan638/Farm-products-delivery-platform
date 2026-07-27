@@ -88,6 +88,7 @@ class Order(Base):
 
     address: Mapped["CustomerAddress"] = relationship("CustomerAddress")
     items: Mapped[List["OrderItem"]] = relationship("OrderItem", back_populates="order")
+    status_history: Mapped[List["OrderStatusHistory"]] = relationship("OrderStatusHistory", back_populates="order")
 
 
 class OrderItem(Base):
@@ -101,3 +102,13 @@ class OrderItem(Base):
 
     order: Mapped["Order"] = relationship("Order", back_populates="items")
     product: Mapped["Product"] = relationship("Product")    
+    
+class OrderStatusHistory(Base):
+    __tablename__ = "order_status_history"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    order_id = Column(String(20), ForeignKey("orders.order_id"), nullable=False)
+    status = Column(String(30), nullable=False)
+    updated_at = Column(TIMESTAMP, server_default=func.now())
+
+    order: Mapped["Order"] = relationship("Order", back_populates="status_history")

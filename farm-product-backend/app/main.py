@@ -7,19 +7,17 @@ from sqlalchemy.orm import Session
 from sqlalchemy import or_
 
 from app.database import Base, engine, get_db
-from app.models import Customer, Category, Product, Cart, CustomerAddress, Order, OrderItem
+from app.models import Customer, Category, Product, Cart, CustomerAddress, Order, OrderItem, OrderStatusHistory
 from app.schemas import (
     CustomerRegister, CustomerLogin, SendOtpRequest, VerifyOtpRequest,
     CustomerProfile, ForgotPasswordRequest, CategoryResponse, ProductResponse,
     CategoryProductsResponse, ProductDetailResponse, AddToCartRequest,
     UpdateCartRequest, CartItemResponse, AddressRequest, AddressResponse,
-    PlaceOrderRequest, PlaceOrderResponse, OrderItemResponse, OrderAddressResponse,
-    OrderDetailResponse,
+    PlaceOrderRequest, PlaceOrderResponse, OrderDetailResponse,
+    OrderListResponse, TrackOrderResponse, SimpleMessageResponse,
 )
 
-def generate_order_id(db: Session) -> str:
-    count = db.query(Order).count() + 1
-    return f"ORD{count:03d}"
+
 from app.auth_utils import (
     hash_password,
     verify_password,
@@ -74,6 +72,14 @@ def generate_customer_id(db: Session) -> str:
     last_number = int(last_customer.customer_id.replace("CUS", ""))
     new_number = last_number + 1
     return f"CUS{new_number:03d}"
+
+def generate_order_id(db: Session) -> str:
+    last_order = db.query(Order).order_by(Order.id.desc()).first()
+    if not last_order:
+        return "ORD001"
+    last_number = int(last_order.order_id.replace("ORD", ""))
+    new_number = last_number + 1
+    return f"ORD{new_number:03d}"
 
 
 
@@ -554,15 +560,21 @@ def get_order_details(order_id: str, current_customer: Customer = Depends(get_cu
     items = [
         {
             "product_name": item.product.product_name,
+            "product_image": item.product.product_image,
             "quantity": item.quantity,
             "price": item.price,
         }
         for item in order.items
     ]
 
+    # Calculate subtotal to determine delivery charge
+    subtotal = sum(float(item.price) * item.quantity for item in order.items)
+    delivery_charge = 0 if subtotal >= 500 or subtotal == 0 else 40
+
     return {
         "order_id": order.order_id,
         "total_amount": order.total_amount,
+        "delivery_charge": delivery_charge,
         "payment_method": order.payment_method,
         "order_status": order.order_status,
         "created_at": order.created_at.strftime("%d %b %Y, %I:%M %p"),
@@ -577,3 +589,124 @@ def get_order_details(order_id: str, current_customer: Customer = Depends(get_cu
         },
         "items": items,
     }
+
+@app.get("/api/my-orders", response_model=List[OrderListResponse])
+def get_customer_orders(current_customer: Customer = Depends(get_current_customer), db: Session = Depends(get_db)):
+    orders = db.query(Order).filter(
+        Order.customer_id == current_customer.customer_id
+    ).order_by(Order.created_at.desc(), Order.order_id.desc()).all()
+
+    result = []
+    for order in orders:
+        items = [
+            {
+                "product_name": item.product.product_name,
+                "product_image": item.product.product_image,
+                "quantity": item.quantity,
+                "price": item.price,
+            }
+            for item in order.items
+        ]
+        result.append({
+            "order_id": order.order_id,
+            "total_amount": order.total_amount,
+            "payment_method": order.payment_method,
+            "order_status": order.order_status,
+            "created_at": order.created_at.strftime("%d %b %Y, %I:%M %p"),
+            "items": items,
+        })
+
+    return result
+
+@app.get("/api/orders/{order_id}/track", response_model=TrackOrderResponse)
+def track_order_status(order_id: str, current_customer: Customer = Depends(get_current_customer), db: Session = Depends(get_db)):
+    order = db.query(Order).filter(
+        Order.order_id == order_id,
+        Order.customer_id == current_customer.customer_id
+    ).first()
+
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    history_entries = db.query(OrderStatusHistory).filter(
+        OrderStatusHistory.order_id == order_id
+    ).order_by(OrderStatusHistory.updated_at.asc()).all()
+
+    history = [
+        {
+            "status": entry.status,
+            "updated_at": entry.updated_at.strftime("%d %b %Y, %I:%M %p"),
+        }
+        for entry in history_entries
+    ]
+
+    return {
+        "order_id": order.order_id,
+        "current_status": order.order_status,
+        "history": history,
+    }
+
+@app.post("/api/orders/{order_id}/cancel", response_model=SimpleMessageResponse)
+def cancel_order(order_id: str, current_customer: Customer = Depends(get_current_customer), db: Session = Depends(get_db)):
+    order = db.query(Order).filter(
+        Order.order_id == order_id,
+        Order.customer_id == current_customer.customer_id
+    ).first()
+
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    if order.order_status != "Pending":
+        raise HTTPException(status_code=400, detail="Order can only be cancelled before confirmation")
+
+    order.order_status = "Cancelled"
+
+    status_entry = OrderStatusHistory(
+        order_id=order_id,
+        status="Cancelled",
+    )
+    db.add(status_entry)
+
+    db.commit()
+
+    return {"message": "Order cancelled successfully"}
+
+@app.post("/api/orders/{order_id}/reorder", response_model=SimpleMessageResponse)
+def reorder_previous_order(order_id: str, current_customer: Customer = Depends(get_current_customer), db: Session = Depends(get_db)):
+    order = db.query(Order).filter(
+        Order.order_id == order_id,
+        Order.customer_id == current_customer.customer_id
+    ).first()
+
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    if order.order_status != "Delivered":
+        raise HTTPException(status_code=400, detail="Only delivered orders can be reordered")
+
+    for item in order.items:
+        product = db.query(Product).filter(Product.id == item.product_id, Product.status == "active").first()
+        if not product or product.stock <= 0:
+            continue
+
+        quantity_to_add = min(item.quantity, product.stock)
+
+        existing_cart_item = db.query(Cart).filter(
+            Cart.customer_id == current_customer.customer_id,
+            Cart.product_id == item.product_id
+        ).first()
+
+        if existing_cart_item:
+            new_quantity = existing_cart_item.quantity + quantity_to_add
+            existing_cart_item.quantity = min(new_quantity, product.stock)
+        else:
+            new_cart_item = Cart(
+                customer_id=current_customer.customer_id,
+                product_id=item.product_id,
+                quantity=quantity_to_add,
+            )
+            db.add(new_cart_item)
+
+    db.commit()
+
+    return {"message": "Items added to cart successfully"}

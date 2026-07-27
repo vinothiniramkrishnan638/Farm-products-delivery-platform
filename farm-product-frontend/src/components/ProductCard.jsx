@@ -43,17 +43,17 @@ const ProductCard = ({ product }) => {
   };
 
   return (
-    <div className="bg-white rounded-xl border border-gray-100/70 overflow-hidden flex flex-col hover-card-effect shadow-sm">
+    <div className="bg-white rounded-xl border border-gray-100/70 overflow-hidden flex flex-col hover:shadow-lg hover:shadow-green-100/30 hover:-translate-y-1.5 transition-all duration-300 shadow-sm">
       <Link
         to={`/product/${product.id}`}
-        className="w-full h-40 bg-gray-100 flex items-center justify-center relative overflow-hidden block cursor-pointer"
+        className="w-full h-40 bg-gray-100 flex items-center justify-center relative overflow-hidden block cursor-pointer group"
       >
         {!imgError && getProductImage() ? (
           <img
             src={getProductImage()}
             alt={product.product_name}
             onError={() => setImgError(true)}
-            className="w-full h-full object-contain bg-gray-50 p-2 transition-transform duration-500 hover:scale-105"
+            className="w-full h-full object-contain bg-gray-50 p-2 transition-transform duration-550 group-hover:scale-105"
           />
         ) : (
           <span className="text-gray-400 text-xs">No Image</span>

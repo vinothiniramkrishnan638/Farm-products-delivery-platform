@@ -65,4 +65,18 @@ export const CartProvider = ({ children }) => {
   );
 };
 
-export const useCart = () => useContext(CartContext);
+export const useCart = () => {
+  const context = useContext(CartContext);
+  if (!context) {
+    return {
+      cartItems: [],
+      cartCount: 0,
+      loading: false,
+      loadCart: () => {},
+      addToCart: () => {},
+      updateQuantity: () => {},
+      removeFromCart: () => {},
+    };
+  }
+  return context;
+};

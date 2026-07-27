@@ -22,15 +22,15 @@ const CartItemRow = ({ item, onUpdateQuantity, onRemove }) => {
   };
 
   return (
-    <div className="flex flex-col bg-white rounded-xl border border-gray-100 p-3 shadow-sm gap-2">
+    <div className="flex flex-col bg-white rounded-xl border border-gray-100 p-3 shadow-sm gap-2 hover:shadow-md hover:border-green-100 transition-all duration-300">
       <div className="flex items-center gap-3">
-        <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center shrink-0">
+        <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center shrink-0 group">
           {!imgError && getProductImage() ? (
             <img
               src={getProductImage()}
               alt={item.product_name}
               onError={() => setImgError(true)}
-              className="w-full h-full object-cover"
+              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
             />
           ) : (
             <span className="text-gray-400 text-xs">No Image</span>
@@ -52,7 +52,7 @@ const CartItemRow = ({ item, onUpdateQuantity, onRemove }) => {
           />
           <button
             onClick={() => onRemove(item.cart_id)}
-            className="text-xs text-red-500 font-semibold hover:underline"
+            className="text-xs text-red-500 font-extrabold hover:underline active:scale-95 transition-transform duration-100"
           >
             Remove
           </button>

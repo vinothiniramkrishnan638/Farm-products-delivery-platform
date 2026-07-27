@@ -129,6 +129,7 @@ class PlaceOrderRequest(BaseModel):
 
 class OrderItemResponse(BaseModel):
     product_name: str
+    product_image: Optional[str] = None
     quantity: int
     price: float
 
@@ -146,6 +147,7 @@ class OrderAddressResponse(BaseModel):
 class OrderDetailResponse(BaseModel):
     order_id: str
     total_amount: float
+    delivery_charge: float
     payment_method: str
     order_status: str
     created_at: str
@@ -156,3 +158,26 @@ class OrderDetailResponse(BaseModel):
 class PlaceOrderResponse(BaseModel):
     message: str
     order_id: str   
+    
+class OrderListResponse(BaseModel):
+    order_id: str
+    total_amount: float
+    payment_method: str
+    order_status: str
+    created_at: str
+    items: List[OrderItemResponse]
+
+
+class OrderStatusHistoryResponse(BaseModel):
+    status: str
+    updated_at: str
+
+
+class TrackOrderResponse(BaseModel):
+    order_id: str
+    current_status: str
+    history: List[OrderStatusHistoryResponse]
+
+
+class SimpleMessageResponse(BaseModel):
+    message: str
