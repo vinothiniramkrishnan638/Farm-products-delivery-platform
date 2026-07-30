@@ -43,7 +43,7 @@ const ProductCard = ({ product }) => {
   };
 
   return (
-    <div className="bg-white rounded-xl border border-gray-100/70 overflow-hidden flex flex-col hover:shadow-lg hover:shadow-green-100/30 hover:-translate-y-1.5 transition-all duration-300 shadow-sm">
+    <div className="bg-white rounded-xl border border-gray-100/70 overflow-hidden flex flex-col shadow-sm card-3d-hover">
       <Link
         to={`/product/${product.id}`}
         className="w-full h-40 bg-gray-100 flex items-center justify-center relative overflow-hidden block cursor-pointer group"
@@ -79,7 +79,7 @@ const ProductCard = ({ product }) => {
             onClick={handleAddToCart}
             disabled={outOfStock || adding}
             title="Add to Cart"
-            className="flex-1 h-10 shimmer-button text-white rounded-xl disabled:opacity-40 disabled:pointer-events-none active:scale-95 shadow-sm flex items-center justify-center"
+            className="flex-1 h-10 shimmer-button text-white rounded-xl disabled:opacity-40 disabled:pointer-events-none active:scale-95 shadow-md flex items-center justify-center btn-3d"
           >
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5">
               <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z" />
@@ -88,7 +88,7 @@ const ProductCard = ({ product }) => {
           {/* Button B: Short Text-Only Button */}
           <Link
             to={`/product/${product.id}`}
-            className="flex-1 h-10 border-2 border-green-600 text-green-700 text-xs font-extrabold rounded-xl text-center hover:bg-green-50 active:scale-95 transition-all duration-150 shadow-sm flex items-center justify-center"
+            className="flex-1 h-10 border-2 border-green-600 text-green-700 text-xs font-extrabold rounded-xl text-center hover:bg-green-50 active:scale-95 transition-all duration-150 shadow-md flex items-center justify-center btn-3d"
           >
             View
           </Link>

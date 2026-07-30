@@ -87,7 +87,7 @@ const Login = () => {
       {/* Background Mask for High Readability */}
       <div className="absolute inset-0 bg-black/35 backdrop-blur-[2px]"></div>
 
-      <div className="w-full max-w-sm rounded-2xl shadow-md p-6 relative z-10 glass-card animate-bounce-in">
+      <div className="w-full max-w-sm rounded-2xl shadow-xl p-6 relative z-10 glass-card animate-bounce-in card-3d-hover">
         <h1 className="text-2xl font-bold text-green-700 text-center mb-1 animate-title-bounce">
           Fresh Farm Products
         </h1>
@@ -178,7 +178,7 @@ const Login = () => {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-green-600 text-white font-semibold py-2.5 rounded-lg hover:bg-green-700 disabled:opacity-60 transition-colors shadow-sm"
+              className="w-full bg-gradient-to-r from-green-600 to-emerald-700 text-white font-semibold py-2.5 rounded-lg btn-3d disabled:opacity-60 transition-colors shadow-md"
             >
               {loading ? "Logging in..." : "Login"}
             </button>
@@ -210,7 +210,7 @@ const Login = () => {
                 type="button"
                 onClick={handleSendOtp}
                 disabled={loading}
-                className="w-full bg-green-600 text-white font-semibold py-2.5 rounded-lg hover:bg-green-700 disabled:opacity-60 transition-colors shadow-sm"
+                className="w-full bg-gradient-to-r from-green-600 to-emerald-700 text-white font-semibold py-2.5 rounded-lg btn-3d disabled:opacity-60 transition-colors shadow-md"
               >
                 {loading ? "Sending OTP..." : "Send OTP"}
               </button>
@@ -236,9 +236,9 @@ const Login = () => {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full bg-green-600 text-white font-semibold py-2.5 rounded-lg hover:bg-green-700 disabled:opacity-60 transition-colors shadow-sm"
+                  className="w-full bg-gradient-to-r from-green-600 to-emerald-700 text-white font-semibold py-2.5 rounded-lg btn-3d disabled:opacity-60 transition-colors shadow-md"
                 >
-                  {loading ? "Verifying..." : "Verify & Login"}
+                  {loading ? "Verifying..." : "Verify OTP & Login"}
                 </button>
                 <button
                   type="button"

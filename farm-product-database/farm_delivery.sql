@@ -119,3 +119,16 @@ CREATE TABLE IF NOT EXISTS order_status_history (
     FOREIGN KEY (order_id) REFERENCES orders(order_id)
 );
 
+CREATE TABLE IF NOT EXISTS admins (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    admin_id VARCHAR(10) NOT NULL UNIQUE,
+    full_name VARCHAR(100) NOT NULL,
+    mobile_number VARCHAR(10) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+ALTER TABLE orders ADD COLUMN delivery_partner_name VARCHAR(100) NULL;
+
+ALTER TABLE customers ADD COLUMN status ENUM('active', 'inactive') NOT NULL DEFAULT 'active';
+

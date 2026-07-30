@@ -181,3 +181,128 @@ class TrackOrderResponse(BaseModel):
 
 class SimpleMessageResponse(BaseModel):
     message: str
+    
+class AdminLoginRequest(BaseModel):
+    login_id: str
+    password: str
+
+
+class AdminBootstrapRequest(BaseModel):
+    full_name: str
+    mobile_number: str
+    password: str
+
+
+class AdminProfileResponse(BaseModel):
+    admin_id: str
+    full_name: str
+    mobile_number: str
+    email: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class DashboardSummaryResponse(BaseModel):
+    total_customers: int
+    total_categories: int
+    total_products: int
+    total_orders: int
+    pending_orders: int
+    delivered_orders: int
+    total_revenue: float
+
+
+class AdminCategoryRequest(BaseModel):
+    category_name: str
+    category_image: Optional[str] = None
+
+
+class AdminCategoryResponse(BaseModel):
+    id: int
+    category_name: str
+    category_image: Optional[str] = None
+    status: str
+    product_count: int
+
+
+class AdminProductRequest(BaseModel):
+    product_name: str
+    category_id: int
+    price: float
+    stock: int
+    unit: str
+    description: Optional[str] = None
+    product_image: Optional[str] = None
+    images: List[str] = []
+
+
+class UpdateStockRequest(BaseModel):
+    stock: int
+
+
+class AdminProductResponse(BaseModel):
+    id: int
+    category_id: int
+    product_name: str
+    description: Optional[str] = None
+    product_image: Optional[str] = None
+    images: List[str] = []
+    price: float
+    stock: int
+    unit: str
+    status: str
+
+
+class AdminOrderItemResponse(BaseModel):
+    product_name: str
+    quantity: int
+    price: float
+
+
+class AdminOrderListResponse(BaseModel):
+    order_id: str
+    customer_name: str
+    total_amount: float
+    payment_method: str
+    order_status: str
+    created_at: str
+    items: List[AdminOrderItemResponse]
+
+
+class AdminOrderAddressResponse(BaseModel):
+    address: str
+    village: str
+    district: str
+    state: str
+    pincode: str
+
+
+class AdminOrderDetailResponse(BaseModel):
+    order_id: str
+    customer_name: str
+    customer_mobile: str
+    total_amount: float
+    payment_method: str
+    order_status: str
+    created_at: str
+    delivery_partner_name: Optional[str] = None
+    delivery_address: AdminOrderAddressResponse
+    items: List[AdminOrderItemResponse]
+
+
+class UpdateOrderStatusRequest(BaseModel):
+    status: str
+
+
+class AssignDeliveryRequest(BaseModel):
+    delivery_partner_name: str
+
+
+class AdminCustomerResponse(BaseModel):
+    customer_id: str
+    full_name: str
+    mobile_number: str
+    email: str
+    village: str
+    status: str
+    total_orders: int

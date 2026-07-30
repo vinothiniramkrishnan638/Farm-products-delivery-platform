@@ -14,7 +14,18 @@ class Customer(Base):
     village = Column(String(100), nullable=False)
     password = Column(String(255), nullable=False)
     created_at = Column(TIMESTAMP, server_default=func.now())
+    status = Column(String(20), nullable=False, default="active")
+    
+class Admin(Base):
+    __tablename__ = "admins"
 
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    admin_id = Column(String(10), unique=True, nullable=False)
+    full_name = Column(String(100), nullable=False)
+    mobile_number = Column(String(10), unique=True, nullable=False)
+    email = Column(String(100), unique=True, nullable=True)
+    password = Column(String(255), nullable=False)
+    created_at = Column(TIMESTAMP, server_default=func.now())
 
 class Category(Base):
     __tablename__ = "categories"
@@ -85,8 +96,10 @@ class Order(Base):
     payment_method = Column(String(20), nullable=False)
     order_status = Column(String(30), nullable=False, default="Pending")
     created_at = Column(TIMESTAMP, server_default=func.now())
+    delivery_partner_name = Column(String(100), nullable=True)
 
     address: Mapped["CustomerAddress"] = relationship("CustomerAddress")
+    customer: Mapped["Customer"] = relationship("Customer")
     items: Mapped[List["OrderItem"]] = relationship("OrderItem", back_populates="order")
     status_history: Mapped[List["OrderStatusHistory"]] = relationship("OrderStatusHistory", back_populates="order")
 

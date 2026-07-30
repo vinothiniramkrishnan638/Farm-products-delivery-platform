@@ -4,10 +4,10 @@ from typing import List
 from fastapi import FastAPI, Depends, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
-from sqlalchemy import or_
+from sqlalchemy import or_,func as sql_func
 
 from app.database import Base, engine, get_db
-from app.models import Customer, Category, Product, Cart, CustomerAddress, Order, OrderItem, OrderStatusHistory
+from app.models import Customer, Category, Product, Cart, CustomerAddress, Order, OrderItem, OrderStatusHistory,Admin
 from app.schemas import (
     CustomerRegister, CustomerLogin, SendOtpRequest, VerifyOtpRequest,
     CustomerProfile, ForgotPasswordRequest, CategoryResponse, ProductResponse,
@@ -15,6 +15,11 @@ from app.schemas import (
     UpdateCartRequest, CartItemResponse, AddressRequest, AddressResponse,
     PlaceOrderRequest, PlaceOrderResponse, OrderDetailResponse,
     OrderListResponse, TrackOrderResponse, SimpleMessageResponse,
+    AdminLoginRequest, AdminBootstrapRequest, AdminProfileResponse,
+    DashboardSummaryResponse, AdminCategoryRequest, AdminCategoryResponse,
+    AdminProductRequest, UpdateStockRequest, AdminProductResponse,
+    AdminOrderListResponse, AdminOrderDetailResponse, UpdateOrderStatusRequest,
+    AssignDeliveryRequest, AdminCustomerResponse
 )
 
 
@@ -29,6 +34,45 @@ from jose import jwt, JWTError
 from fastapi.security import OAuth2PasswordBearer
 
 Base.metadata.create_all(bind=engine)
+
+def run_db_migration():
+    from sqlalchemy import text
+    with engine.connect() as conn:
+        trans = conn.begin()
+        try:
+            # Add email column to admins
+            try:
+                conn.execute(text("ALTER TABLE admins ADD COLUMN email VARCHAR(100) NULL UNIQUE;"))
+            except Exception as ex:
+                if "Duplicate column name" not in str(ex):
+                    raise ex
+
+            # Add delivery_partner_name column to orders
+            try:
+                conn.execute(text("ALTER TABLE orders ADD COLUMN delivery_partner_name VARCHAR(100) NULL;"))
+            except Exception as ex:
+                if "Duplicate column name" not in str(ex):
+                    raise ex
+
+            res = conn.execute(text("SELECT id FROM admins WHERE mobile_number = '8888888888' OR email = 'admin@farm.com'")).fetchone()
+            hashed_pw = hash_password("adminpassword123")
+            if res:
+                conn.execute(
+                    text("UPDATE admins SET email = 'admin@farm.com', password = :password, full_name = 'System Admin' WHERE id = :id"),
+                    {"password": hashed_pw, "id": res[0]}
+                )
+            else:
+                conn.execute(
+                    text("INSERT INTO admins (admin_id, full_name, mobile_number, email, password) VALUES ('ADM001', 'System Admin', '8888888888', 'admin@farm.com', :password)"),
+                    {"password": hashed_pw}
+                )
+            trans.commit()
+            print("DB migration completed successfully inside Uvicorn reload loop.")
+        except Exception as e:
+            trans.rollback()
+            print("DB migration failed inside Uvicorn reload loop:", e)
+
+run_db_migration()
 
 app = FastAPI()
 
@@ -64,6 +108,21 @@ def get_current_customer(token: str = Depends(oauth2_scheme), db: Session = Depe
     if customer is None:
         raise credentials_exception
     return customer
+def get_current_admin(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    credentials_exception = HTTPException(status_code=401, detail="Could not validate admin credentials")
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        admin_id = payload.get("admin_id")
+        role = payload.get("role")
+        if admin_id is None or role != "admin":
+            raise credentials_exception
+    except JWTError:
+        raise credentials_exception
+
+    admin = db.query(Admin).filter(Admin.admin_id == admin_id).first()
+    if admin is None:
+        raise credentials_exception
+    return admin
 
 def generate_customer_id(db: Session) -> str:
     last_customer = db.query(Customer).order_by(Customer.id.desc()).first()
@@ -80,6 +139,13 @@ def generate_order_id(db: Session) -> str:
     last_number = int(last_order.order_id.replace("ORD", ""))
     new_number = last_number + 1
     return f"ORD{new_number:03d}"
+def generate_admin_id(db: Session) -> str:
+    last_admin = db.query(Admin).order_by(Admin.id.desc()).first()
+    if not last_admin:
+        return "ADM001"
+    last_number = int(last_admin.admin_id.replace("ADM", ""))
+    new_number = last_number + 1
+    return f"ADM{new_number:03d}"
 
 
 
@@ -710,3 +776,385 @@ def reorder_previous_order(order_id: str, current_customer: Customer = Depends(g
     db.commit()
 
     return {"message": "Items added to cart successfully"}
+
+@app.post("/api/admin/bootstrap")
+def bootstrap_admin(payload: AdminBootstrapRequest, db: Session = Depends(get_db)):
+    existing_admin_count = db.query(Admin).count()
+    if existing_admin_count > 0:
+        raise HTTPException(status_code=403, detail="An admin account already exists. Bootstrap is disabled.")
+
+    existing_mobile = db.query(Admin).filter(Admin.mobile_number == payload.mobile_number).first()
+    if existing_mobile:
+        raise HTTPException(status_code=400, detail="Mobile number already in use")
+
+    new_admin_id = generate_admin_id(db)
+    hashed_pw = hash_password(payload.password)
+
+    new_admin = Admin(
+        admin_id=new_admin_id,
+        full_name=payload.full_name,
+        mobile_number=payload.mobile_number,
+        password=hashed_pw,
+    )
+    db.add(new_admin)
+    db.commit()
+    db.refresh(new_admin)
+
+    return {"message": "Admin account created successfully", "admin_id": new_admin.admin_id}
+
+@app.post("/api/admin/login")
+def login_admin(payload: AdminLoginRequest, db: Session = Depends(get_db)):
+    login_id = payload.login_id
+    if "@" in login_id:
+        admin = db.query(Admin).filter(Admin.email == login_id).first()
+    else:
+        admin = db.query(Admin).filter(Admin.mobile_number == login_id).first()
+
+    if not admin or not verify_password(payload.password, admin.password):
+        raise HTTPException(status_code=401, detail="Invalid mobile number, email, or password")
+
+    token = create_access_token({"admin_id": admin.admin_id, "role": "admin"})
+
+    return {
+        "token": token,
+        "admin": {
+            "admin_id": admin.admin_id,
+            "full_name": admin.full_name,
+            "mobile_number": admin.mobile_number,
+            "email": admin.email,
+        },
+    }
+
+@app.get("/api/admin/profile", response_model=AdminProfileResponse)
+def get_admin_profile(current_admin: Admin = Depends(get_current_admin)):
+    return current_admin
+
+
+# ---------------- MODULE 6: DASHBOARD SUMMARY ----------------
+
+@app.get("/api/admin/dashboard-summary", response_model=DashboardSummaryResponse)
+def get_dashboard_summary(current_admin: Admin = Depends(get_current_admin), db: Session = Depends(get_db)):
+    total_customers = db.query(Customer).count()
+    total_categories = db.query(Category).count()
+    total_products = db.query(Product).count()
+    total_orders = db.query(Order).count()
+    pending_orders = db.query(Order).filter(Order.order_status == "Pending").count()
+    delivered_orders = db.query(Order).filter(Order.order_status == "Delivered").count()
+
+    total_revenue = db.query(sql_func.sum(Order.total_amount)).filter(
+        Order.order_status != "Cancelled"
+    ).scalar() or 0
+
+    return {
+        "total_customers": total_customers,
+        "total_categories": total_categories,
+        "total_products": total_products,
+        "total_orders": total_orders,
+        "pending_orders": pending_orders,
+        "delivered_orders": delivered_orders,
+        "total_revenue": round(float(total_revenue), 2),
+    }
+
+
+# ---------------- MODULE 6: CATEGORY MANAGEMENT ----------------
+
+@app.get("/api/admin/categories", response_model=List[AdminCategoryResponse])
+def admin_get_categories(current_admin: Admin = Depends(get_current_admin), db: Session = Depends(get_db)):
+    categories = db.query(Category).all()
+
+    result = []
+    for cat in categories:
+        product_count = db.query(Product).filter(Product.category_id == cat.id).count()
+        result.append({
+            "id": cat.id,
+            "category_name": cat.category_name,
+            "category_image": cat.category_image,
+            "status": cat.status,
+            "product_count": product_count,
+        })
+
+    return result
+
+@app.post("/api/admin/categories")
+def admin_add_category(payload: AdminCategoryRequest, current_admin: Admin = Depends(get_current_admin), db: Session = Depends(get_db)):
+    new_category = Category(
+        category_name=payload.category_name,
+        category_image=payload.category_image,
+        status="active",
+    )
+    db.add(new_category)
+    db.commit()
+    db.refresh(new_category)
+
+    return {"message": "Category added successfully", "id": new_category.id}
+
+@app.put("/api/admin/categories/{category_id}")
+def admin_update_category(category_id: int, payload: AdminCategoryRequest, current_admin: Admin = Depends(get_current_admin), db: Session = Depends(get_db)):
+    category = db.query(Category).filter(Category.id == category_id).first()
+    if not category:
+        raise HTTPException(status_code=404, detail="Category not found")
+
+    category.category_name = payload.category_name
+    category.category_image = payload.category_image
+    db.commit()
+
+    return {"message": "Category updated successfully"}
+
+@app.delete("/api/admin/categories/{category_id}")
+def admin_delete_category(category_id: int, current_admin: Admin = Depends(get_current_admin), db: Session = Depends(get_db)):
+    category = db.query(Category).filter(Category.id == category_id).first()
+    if not category:
+        raise HTTPException(status_code=404, detail="Category not found")
+
+    product_count = db.query(Product).filter(Product.category_id == category_id).count()
+    if product_count > 0:
+        raise HTTPException(status_code=400, detail="Cannot delete category with existing products. Disable it instead.")
+
+    db.delete(category)
+    db.commit()
+
+    return {"message": "Category deleted successfully"}
+
+@app.put("/api/admin/categories/{category_id}/toggle-status")
+def admin_toggle_category_status(category_id: int, current_admin: Admin = Depends(get_current_admin), db: Session = Depends(get_db)):
+    category = db.query(Category).filter(Category.id == category_id).first()
+    if not category:
+        raise HTTPException(status_code=404, detail="Category not found")
+
+    category.status = "inactive" if category.status == "active" else "active"
+    db.commit()
+
+    return {"message": "Category status updated successfully", "status": category.status}
+
+
+# ---------------- MODULE 6: PRODUCT MANAGEMENT ----------------
+
+@app.get("/api/admin/products", response_model=List[AdminProductResponse])
+def admin_get_products(current_admin: Admin = Depends(get_current_admin), db: Session = Depends(get_db)):
+    products = db.query(Product).all()
+
+    result = []
+    for product in products:
+        image_list = []
+        if product.images:
+            try:
+                image_list = json.loads(product.images)
+            except (json.JSONDecodeError, TypeError):
+                image_list = []
+        result.append({
+            "id": product.id,
+            "category_id": product.category_id,
+            "product_name": product.product_name,
+            "description": product.description,
+            "product_image": product.product_image,
+            "images": image_list,
+            "price": product.price,
+            "stock": product.stock,
+            "unit": product.unit,
+            "status": product.status,
+        })
+
+    return result
+
+@app.post("/api/admin/products")
+def admin_add_product(payload: AdminProductRequest, current_admin: Admin = Depends(get_current_admin), db: Session = Depends(get_db)):
+    category = db.query(Category).filter(Category.id == payload.category_id).first()
+    if not category:
+        raise HTTPException(status_code=404, detail="Category not found")
+
+    new_product = Product(
+        category_id=payload.category_id,
+        product_name=payload.product_name,
+        description=payload.description,
+        product_image=payload.product_image,
+        images=json.dumps(payload.images) if payload.images else None,
+        price=payload.price,
+        stock=payload.stock,
+        unit=payload.unit,
+        status="active",
+    )
+    db.add(new_product)
+    db.commit()
+    db.refresh(new_product)
+
+    return {"message": "Product added successfully", "id": new_product.id}
+
+@app.put("/api/admin/products/{product_id}")
+def admin_update_product(product_id: int, payload: AdminProductRequest, current_admin: Admin = Depends(get_current_admin), db: Session = Depends(get_db)):
+    product = db.query(Product).filter(Product.id == product_id).first()
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    category = db.query(Category).filter(Category.id == payload.category_id).first()
+    if not category:
+        raise HTTPException(status_code=404, detail="Category not found")
+
+    product.category_id = payload.category_id
+    product.product_name = payload.product_name
+    product.description = payload.description
+    product.product_image = payload.product_image
+    product.images = json.dumps(payload.images) if payload.images else None
+    product.price = payload.price
+    product.stock = payload.stock
+    product.unit = payload.unit
+    db.commit()
+
+    return {"message": "Product updated successfully"}
+
+@app.delete("/api/admin/products/{product_id}")
+def admin_delete_product(product_id: int, current_admin: Admin = Depends(get_current_admin), db: Session = Depends(get_db)):
+    product = db.query(Product).filter(Product.id == product_id).first()
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    order_item_count = db.query(OrderItem).filter(OrderItem.product_id == product_id).count()
+    if order_item_count > 0:
+        raise HTTPException(status_code=400, detail="Cannot delete a product that has existing orders. Disable it instead.")
+
+    db.delete(product)
+    db.commit()
+
+    return {"message": "Product deleted successfully"}
+
+@app.put("/api/admin/products/{product_id}/stock")
+def admin_update_stock(product_id: int, payload: UpdateStockRequest, current_admin: Admin = Depends(get_current_admin), db: Session = Depends(get_db)):
+    product = db.query(Product).filter(Product.id == product_id).first()
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    if payload.stock < 0:
+        raise HTTPException(status_code=400, detail="Stock cannot be negative")
+
+    product.stock = payload.stock
+    db.commit()
+
+    return {"message": "Stock updated successfully", "stock": product.stock}
+
+@app.put("/api/admin/products/{product_id}/toggle-status")
+def admin_toggle_product_status(product_id: int, current_admin: Admin = Depends(get_current_admin), db: Session = Depends(get_db)):
+    product = db.query(Product).filter(Product.id == product_id).first()
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    product.status = "inactive" if product.status == "active" else "active"
+    db.commit()
+
+    return {"message": "Product status updated successfully", "status": product.status}
+
+
+# ---------------- MODULE 6: ORDER MANAGEMENT ----------------
+
+@app.get("/api/admin/orders", response_model=List[AdminOrderListResponse])
+def admin_get_orders(current_admin: Admin = Depends(get_current_admin), db: Session = Depends(get_db)):
+    orders = db.query(Order).order_by(Order.created_at.desc()).all()
+
+    result = []
+    for order in orders:
+        items = [
+            {"product_name": item.product.product_name, "quantity": item.quantity, "price": item.price}
+            for item in order.items
+        ]
+        result.append({
+            "order_id": order.order_id,
+            "customer_name": order.customer.full_name,
+            "total_amount": order.total_amount,
+            "payment_method": order.payment_method,
+            "order_status": order.order_status,
+            "created_at": order.created_at.strftime("%d %b %Y, %I:%M %p"),
+            "items": items,
+        })
+
+    return result
+
+@app.get("/api/admin/orders/{order_id}", response_model=AdminOrderDetailResponse)
+def admin_get_order_details(order_id: str, current_admin: Admin = Depends(get_current_admin), db: Session = Depends(get_db)):
+    order = db.query(Order).filter(Order.order_id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    items = [
+        {"product_name": item.product.product_name, "quantity": item.quantity, "price": item.price}
+        for item in order.items
+    ]
+
+    return {
+        "order_id": order.order_id,
+        "customer_name": order.customer.full_name,
+        "customer_mobile": order.customer.mobile_number,
+        "total_amount": order.total_amount,
+        "payment_method": order.payment_method,
+        "order_status": order.order_status,
+        "created_at": order.created_at.strftime("%d %b %Y, %I:%M %p"),
+        "delivery_partner_name": order.delivery_partner_name,
+        "delivery_address": {
+            "address": order.address.address,
+            "village": order.address.village,
+            "district": order.address.district,
+            "state": order.address.state,
+            "pincode": order.address.pincode,
+        },
+        "items": items,
+    }
+
+@app.put("/api/admin/orders/{order_id}/status")
+def admin_update_order_status(order_id: str, payload: UpdateOrderStatusRequest, current_admin: Admin = Depends(get_current_admin), db: Session = Depends(get_db)):
+    order = db.query(Order).filter(Order.order_id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    valid_statuses = ["Pending", "Confirmed", "Preparing", "Out for Delivery", "Delivered", "Cancelled"]
+    if payload.status not in valid_statuses:
+        raise HTTPException(status_code=400, detail="Invalid order status")
+
+    order.order_status = payload.status
+
+    status_entry = OrderStatusHistory(order_id=order_id, status=payload.status)
+    db.add(status_entry)
+
+    db.commit()
+
+    return {"message": "Order status updated successfully"}
+
+@app.put("/api/admin/orders/{order_id}/assign-delivery")
+def admin_assign_delivery(order_id: str, payload: AssignDeliveryRequest, current_admin: Admin = Depends(get_current_admin), db: Session = Depends(get_db)):
+    order = db.query(Order).filter(Order.order_id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    order.delivery_partner_name = payload.delivery_partner_name
+    db.commit()
+
+    return {"message": "Delivery partner assigned successfully"}
+
+
+# ---------------- MODULE 6: CUSTOMER MANAGEMENT ----------------
+
+@app.get("/api/admin/customers", response_model=List[AdminCustomerResponse])
+def admin_get_customers(current_admin: Admin = Depends(get_current_admin), db: Session = Depends(get_db)):
+    customers = db.query(Customer).all()
+
+    result = []
+    for customer in customers:
+        total_orders = db.query(Order).filter(Order.customer_id == customer.customer_id).count()
+        result.append({
+            "customer_id": customer.customer_id,
+            "full_name": customer.full_name,
+            "mobile_number": customer.mobile_number,
+            "email": customer.email,
+            "village": customer.village,
+            "status": customer.status,
+            "total_orders": total_orders,
+        })
+
+    return result
+
+@app.put("/api/admin/customers/{customer_id}/toggle-status")
+def admin_toggle_customer_status(customer_id: str, current_admin: Admin = Depends(get_current_admin), db: Session = Depends(get_db)):
+    customer = db.query(Customer).filter(Customer.customer_id == customer_id).first()
+    if not customer:
+        raise HTTPException(status_code=404, detail="Customer not found")
+
+    customer.status = "inactive" if customer.status == "active" else "active"
+    db.commit()
+
+    return {"message": "Customer status updated successfully", "status":customer.status}
