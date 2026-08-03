@@ -133,7 +133,7 @@ def generate_customer_id(db: Session) -> str:
     return f"CUS{new_number:03d}"
 
 def generate_order_id(db: Session) -> str:
-    last_order = db.query(Order).order_by(Order.id.desc()).first()
+    last_order = db.query(Order).order_by(Order.order_id.desc()).first()
     if not last_order:
         return "ORD001"
     last_number = int(last_order.order_id.replace("ORD", ""))
@@ -1127,7 +1127,7 @@ def admin_assign_delivery(order_id: str, payload: AssignDeliveryRequest, current
     return {"message": "Delivery partner assigned successfully"}
 
 
-# ---------------- MODULE 6: CUSTOMER MANAGEMENT ----------------
+
 
 @app.get("/api/admin/customers", response_model=List[AdminCustomerResponse])
 def admin_get_customers(current_admin: Admin = Depends(get_current_admin), db: Session = Depends(get_db)):

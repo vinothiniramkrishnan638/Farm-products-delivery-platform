@@ -82,7 +82,7 @@ const HeroBanner = () => {
           {/* Layer 1: Backside Ambient Glow (translateZ: -30px) */}
           <div 
             style={{ transform: "translateZ(-30px)" }}
-            className="absolute w-[180px] h-[180px] bg-emerald-500/20 rounded-full blur-2xl"
+            className="absolute w-[180px] h-[180px] bg-emerald-500/20 rounded-full blur-2xl animate-pulse"
           />
 
           {/* Layer 2: Glassmorphic Plate (translateZ: 0px) */}
