@@ -62,7 +62,7 @@ const CategoryProducts = () => {
           products.length === 0 ? (
             <p className="text-gray-400 text-sm text-center py-12">No products found in this category.</p>
           ) : (
-            <div className="grid grid-cols-2 gap-3 px-4 pb-6">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 px-4 pb-6">
               {products.map((product) => (
                 <ProductCard key={product.id} product={product} />
               ))}

@@ -306,3 +306,75 @@ class AdminCustomerResponse(BaseModel):
     village: str
     status: str
     total_orders: int
+    
+class DeliveryLoginRequest(BaseModel):
+    login_id: str
+    password: str
+
+
+class DeliveryPartnerRequest(BaseModel):
+    name: str
+    mobile_number: str
+    email: str
+    password: Optional[str] = None
+
+
+class DeliveryPartnerResponse(BaseModel):
+    id: int
+    partner_id: str
+    name: str
+    mobile_number: str
+    email: str
+    status: str
+    assigned_orders_count: int
+
+
+class DeliveryProfileResponse(BaseModel):
+    partner_id: str
+    name: str
+    mobile_number: str
+    email: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class DeliveryDashboardSummaryResponse(BaseModel):
+    today_deliveries: int
+    pending_deliveries: int
+    completed_deliveries: int
+
+
+class AssignOrderRequest(BaseModel):
+    order_id: str
+    delivery_partner_id: int
+
+
+class UpdateDeliveryStatusRequest(BaseModel):
+    status: str
+
+
+class AssignedOrderResponse(BaseModel):
+    assignment_id: int
+    order_id: str
+    customer_name: str
+    customer_mobile: str
+    delivery_address: str
+    total_amount: float
+    payment_method: str
+    order_status: str
+    delivery_status: str
+
+
+class DeliveryHistoryResponse(BaseModel):
+    assignment_id: int
+    order_id: str
+    customer_name: str
+    total_amount: float
+    order_status: str
+    delivered_at: Optional[str] = None
+
+
+class PartnerAssignedOrderResponse(BaseModel):
+    assignment_id: int
+    order_id: str
+    delivery_status: str

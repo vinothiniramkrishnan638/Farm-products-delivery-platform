@@ -125,3 +125,32 @@ class OrderStatusHistory(Base):
     updated_at = Column(TIMESTAMP, server_default=func.now())
 
     order: Mapped["Order"] = relationship("Order", back_populates="status_history")
+
+
+class DeliveryPartner(Base):
+    __tablename__ = "delivery_partners"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    partner_id = Column(String(10), unique=True, nullable=False)
+    name = Column(String(100), nullable=False)
+    mobile_number = Column(String(10), unique=True, nullable=False)
+    email = Column(String(100), unique=True, nullable=False)
+    password = Column(String(255), nullable=False)
+    status = Column(String(20), nullable=False, default="active")
+    created_at = Column(TIMESTAMP, server_default=func.now())
+
+    assignments: Mapped[List["DeliveryAssignment"]] = relationship("DeliveryAssignment", back_populates="partner")
+
+
+class DeliveryAssignment(Base):
+    __tablename__ = "delivery_assignments"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    order_id = Column(String(20), ForeignKey("orders.order_id"), nullable=False)
+    delivery_partner_id = Column(Integer, ForeignKey("delivery_partners.id"), nullable=False)
+    delivery_status = Column(String(30), nullable=False, default="Assigned")
+    assigned_at = Column(TIMESTAMP, server_default=func.now())
+    delivered_at = Column(TIMESTAMP, nullable=True)
+
+    partner: Mapped["DeliveryPartner"] = relationship("DeliveryPartner", back_populates="assignments")
+    order: Mapped["Order"] = relationship("Order")

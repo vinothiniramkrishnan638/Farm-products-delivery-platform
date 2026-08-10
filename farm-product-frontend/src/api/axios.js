@@ -5,11 +5,18 @@ const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
-    // Check if the request URL targets an admin endpoint
+    // Check if the request URL targets an admin or delivery endpoint
     const isAdminRequest = config.url && (config.url.includes("/admin") || config.url.includes("admin/"));
+    const isDeliveryRequest = config.url && (config.url.includes("/delivery") || config.url.includes("delivery/"));
     
     // Choose the appropriate token based on target URL
-    const tokenKey = isAdminRequest ? "adminToken" : "customerToken";
+    let tokenKey = "customerToken";
+    if (isAdminRequest) {
+        tokenKey = "adminToken";
+    } else if (isDeliveryRequest) {
+        tokenKey = "deliveryToken";
+    }
+    
     const token = localStorage.getItem(tokenKey);
     
     if (token) {
@@ -23,15 +30,21 @@ api.interceptors.response.use(
     (error) => {
         if (error.response && error.response.status === 401) {
             const currentPath = window.location.pathname;
-            if (currentPath === "/admin/login" || currentPath === "/login") {
+            if (currentPath === "/admin/login" || currentPath === "/login" || currentPath === "/delivery/login") {
                 return Promise.reject(error);
             }
-            // Determine if the failed request was an admin request or we are currently on an admin page path
+            
             const isAdminPath = currentPath.startsWith("/admin");
+            const isDeliveryPath = currentPath.startsWith("/delivery");
+            
             if (isAdminPath) {
                 localStorage.removeItem("adminToken");
                 localStorage.removeItem("adminData");
                 window.location.href = "/admin/login";
+            } else if (isDeliveryPath) {
+                localStorage.removeItem("deliveryToken");
+                localStorage.removeItem("deliveryData");
+                window.location.href = "/delivery/login";
             } else {
                 localStorage.removeItem("customerToken");
                 localStorage.removeItem("customerData");

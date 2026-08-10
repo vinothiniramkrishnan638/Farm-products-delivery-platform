@@ -131,4 +131,24 @@ CREATE TABLE IF NOT EXISTS admins (
 ALTER TABLE orders ADD COLUMN delivery_partner_name VARCHAR(100) NULL;
 
 ALTER TABLE customers ADD COLUMN status ENUM('active', 'inactive') NOT NULL DEFAULT 'active';
+CREATE TABLE IF NOT EXISTS delivery_partners (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    partner_id VARCHAR(10) NOT NULL UNIQUE,
+    name VARCHAR(100) NOT NULL,
+    mobile_number VARCHAR(10) NOT NULL UNIQUE,
+    email VARCHAR(100) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    status ENUM('active', 'inactive') NOT NULL DEFAULT 'active',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 
+CREATE TABLE IF NOT EXISTS delivery_assignments (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    order_id VARCHAR(20) NOT NULL,
+    delivery_partner_id INT NOT NULL,
+    delivery_status ENUM('Assigned', 'Accepted', 'Picked Up', 'Out for Delivery', 'Delivered') NOT NULL DEFAULT 'Assigned',
+    assigned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    delivered_at TIMESTAMP NULL,
+    FOREIGN KEY (order_id) REFERENCES orders(order_id),
+    FOREIGN KEY (delivery_partner_id) REFERENCES delivery_partners(id)
+);

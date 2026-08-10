@@ -1,13 +1,14 @@
 import json
 import random
 from typing import List
+from datetime import datetime
 from fastapi import FastAPI, Depends, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import or_,func as sql_func
 
 from app.database import Base, engine, get_db
-from app.models import Customer, Category, Product, Cart, CustomerAddress, Order, OrderItem, OrderStatusHistory,Admin
+from app.models import Customer, Category, Product, Cart, CustomerAddress, Order, OrderItem, OrderStatusHistory, Admin, DeliveryPartner, DeliveryAssignment
 from app.schemas import (
     CustomerRegister, CustomerLogin, SendOtpRequest, VerifyOtpRequest,
     CustomerProfile, ForgotPasswordRequest, CategoryResponse, ProductResponse,
@@ -19,7 +20,10 @@ from app.schemas import (
     DashboardSummaryResponse, AdminCategoryRequest, AdminCategoryResponse,
     AdminProductRequest, UpdateStockRequest, AdminProductResponse,
     AdminOrderListResponse, AdminOrderDetailResponse, UpdateOrderStatusRequest,
-    AssignDeliveryRequest, AdminCustomerResponse
+    AssignDeliveryRequest, AdminCustomerResponse,DeliveryLoginRequest, DeliveryPartnerRequest, DeliveryPartnerResponse,
+    DeliveryProfileResponse, DeliveryDashboardSummaryResponse, AssignOrderRequest,
+    UpdateDeliveryStatusRequest, AssignedOrderResponse, DeliveryHistoryResponse,
+    PartnerAssignedOrderResponse
 )
 
 
@@ -124,6 +128,22 @@ def get_current_admin(token: str = Depends(oauth2_scheme), db: Session = Depends
         raise credentials_exception
     return admin
 
+def get_current_delivery_partner(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    credentials_exception = HTTPException(status_code=401, detail="Could not validate delivery partner credentials")
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        partner_id = payload.get("partner_id")
+        role = payload.get("role")
+        if partner_id is None or role != "delivery":
+            raise credentials_exception
+    except JWTError:
+        raise credentials_exception
+
+    partner = db.query(DeliveryPartner).filter(DeliveryPartner.partner_id == partner_id).first()
+    if partner is None:
+        raise credentials_exception
+    return partner
+
 def generate_customer_id(db: Session) -> str:
     last_customer = db.query(Customer).order_by(Customer.id.desc()).first()
     if not last_customer:
@@ -146,6 +166,14 @@ def generate_admin_id(db: Session) -> str:
     last_number = int(last_admin.admin_id.replace("ADM", ""))
     new_number = last_number + 1
     return f"ADM{new_number:03d}"
+
+def generate_partner_id(db: Session) -> str:
+    last_partner = db.query(DeliveryPartner).order_by(DeliveryPartner.id.desc()).first()
+    if not last_partner:
+        return "DP001"
+    last_number = int(last_partner.partner_id.replace("DP", ""))
+    new_number = last_number + 1
+    return f"DP{new_number:03d}"
 
 
 
@@ -726,6 +754,10 @@ def cancel_order(order_id: str, current_customer: Customer = Depends(get_current
         raise HTTPException(status_code=400, detail="Order can only be cancelled before confirmation")
 
     order.order_status = "Cancelled"
+    order.delivery_partner_name = None
+
+    # Delete delivery assignment if exists
+    db.query(DeliveryAssignment).filter(DeliveryAssignment.order_id == order_id).delete()
 
     status_entry = OrderStatusHistory(
         order_id=order_id,
@@ -1046,7 +1078,7 @@ def admin_toggle_product_status(product_id: int, current_admin: Admin = Depends(
 
 @app.get("/api/admin/orders", response_model=List[AdminOrderListResponse])
 def admin_get_orders(current_admin: Admin = Depends(get_current_admin), db: Session = Depends(get_db)):
-    orders = db.query(Order).order_by(Order.created_at.desc()).all()
+    orders = db.query(Order).order_by(Order.created_at.desc(), Order.order_id.desc()).all()
 
     result = []
     for order in orders:
@@ -1107,6 +1139,9 @@ def admin_update_order_status(order_id: str, payload: UpdateOrderStatusRequest, 
         raise HTTPException(status_code=400, detail="Invalid order status")
 
     order.order_status = payload.status
+    if payload.status == "Cancelled":
+        order.delivery_partner_name = None
+        db.query(DeliveryAssignment).filter(DeliveryAssignment.order_id == order_id).delete()
 
     status_entry = OrderStatusHistory(order_id=order_id, status=payload.status)
     db.add(status_entry)
@@ -1158,3 +1193,267 @@ def admin_toggle_customer_status(customer_id: str, current_admin: Admin = Depend
     db.commit()
 
     return {"message": "Customer status updated successfully", "status":customer.status}
+@app.get("/api/admin/delivery-partners", response_model=List[DeliveryPartnerResponse])
+def admin_get_delivery_partners(current_admin: Admin = Depends(get_current_admin), db: Session = Depends(get_db)):
+    partners = db.query(DeliveryPartner).all()
+ 
+    result = []
+    for partner in partners:
+        assigned_count = db.query(DeliveryAssignment).join(Order).filter(
+            DeliveryAssignment.delivery_partner_id == partner.id,
+            DeliveryAssignment.delivery_status != "Delivered",
+            Order.order_status != "Cancelled"
+        ).count()
+        result.append({
+            "id": partner.id,
+            "partner_id": partner.partner_id,
+            "name": partner.name,
+            "mobile_number": partner.mobile_number,
+            "email": partner.email,
+            "status": partner.status,
+            "assigned_orders_count": assigned_count,
+        })
+
+    return result
+ 
+@app.post("/api/admin/delivery-partners")
+def admin_add_delivery_partner(payload: DeliveryPartnerRequest, current_admin: Admin = Depends(get_current_admin), db: Session = Depends(get_db)):
+    existing_mobile = db.query(DeliveryPartner).filter(DeliveryPartner.mobile_number == payload.mobile_number).first()
+    if existing_mobile:
+        raise HTTPException(status_code=400, detail="Mobile number already registered to a delivery partner")
+ 
+    existing_email = db.query(DeliveryPartner).filter(DeliveryPartner.email == payload.email).first()
+    if existing_email:
+        raise HTTPException(status_code=400, detail="Email already registered to a delivery partner")
+ 
+    if not payload.password:
+        raise HTTPException(status_code=400, detail="Password is required for a new delivery partner")
+ 
+    new_partner_id = generate_partner_id(db)
+    hashed_pw = hash_password(payload.password)
+ 
+    new_partner = DeliveryPartner(
+        partner_id=new_partner_id,
+        name=payload.name,
+        mobile_number=payload.mobile_number,
+        email=payload.email,
+        password=hashed_pw,
+        status="active",
+    )
+    db.add(new_partner)
+    db.commit()
+    db.refresh(new_partner)
+ 
+    return {"message": "Delivery partner added successfully", "partner_id": new_partner.partner_id}
+ 
+@app.put("/api/admin/delivery-partners/{partner_id}")
+def admin_update_delivery_partner(partner_id: int, payload: DeliveryPartnerRequest, current_admin: Admin = Depends(get_current_admin), db: Session = Depends(get_db)):
+    partner = db.query(DeliveryPartner).filter(DeliveryPartner.id == partner_id).first()
+    if not partner:
+        raise HTTPException(status_code=404, detail="Delivery partner not found")
+ 
+    partner.name = payload.name
+    partner.mobile_number = payload.mobile_number
+    partner.email = payload.email
+    if payload.password:
+        partner.password = hash_password(payload.password)
+ 
+    db.commit()
+ 
+    return {"message": "Delivery partner updated successfully"}
+ 
+@app.put("/api/admin/delivery-partners/{partner_id}/toggle-status")
+def admin_toggle_delivery_partner_status(partner_id: int, current_admin: Admin = Depends(get_current_admin), db: Session = Depends(get_db)):
+    partner = db.query(DeliveryPartner).filter(DeliveryPartner.id == partner_id).first()
+    if not partner:
+        raise HTTPException(status_code=404, detail="Delivery partner not found")
+ 
+    partner.status = "inactive" if partner.status == "active" else "active"
+    db.commit()
+ 
+    return {"message": "Delivery partner status updated successfully", "status": partner.status}
+ 
+@app.get("/api/admin/delivery-partners/{partner_id}/assigned-orders", response_model=List[PartnerAssignedOrderResponse])
+def admin_get_partner_assigned_orders(partner_id: int, current_admin: Admin = Depends(get_current_admin), db: Session = Depends(get_db)):
+    partner = db.query(DeliveryPartner).filter(DeliveryPartner.id == partner_id).first()
+    if not partner:
+        raise HTTPException(status_code=404, detail="Delivery partner not found")
+ 
+    assignments = db.query(DeliveryAssignment).join(Order).filter(
+        DeliveryAssignment.delivery_partner_id == partner_id,
+        Order.order_status != "Cancelled"
+    ).order_by(DeliveryAssignment.assigned_at.desc()).all()
+ 
+    result = [
+        {"assignment_id": a.id, "order_id": a.order_id, "delivery_status": a.delivery_status}
+        for a in assignments
+    ]
+ 
+    return result
+ 
+@app.post("/api/admin/delivery-assignments")
+def admin_assign_order(payload: AssignOrderRequest, current_admin: Admin = Depends(get_current_admin), db: Session = Depends(get_db)):
+    order = db.query(Order).filter(Order.order_id == payload.order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+ 
+    partner = db.query(DeliveryPartner).filter(DeliveryPartner.id == payload.delivery_partner_id).first()
+    if not partner:
+        raise HTTPException(status_code=404, detail="Delivery partner not found")
+ 
+    if partner.status != "active":
+        raise HTTPException(status_code=400, detail="Cannot assign an order to a disabled delivery partner")
+ 
+    existing_assignment = db.query(DeliveryAssignment).filter(DeliveryAssignment.order_id == payload.order_id).first()
+    if existing_assignment:
+        raise HTTPException(status_code=400, detail="This order is already assigned to a delivery partner")
+ 
+    new_assignment = DeliveryAssignment(
+        order_id=payload.order_id,
+        delivery_partner_id=payload.delivery_partner_id,
+        delivery_status="Assigned",
+    )
+    db.add(new_assignment)
+ 
+    order.delivery_partner_name = partner.name
+ 
+    db.commit()
+    db.refresh(new_assignment)
+ 
+    return {"message": "Order assigned to delivery partner successfully", "assignment_id": new_assignment.id}
+ 
+@app.post("/api/delivery/login")
+def login_delivery_partner(payload: DeliveryLoginRequest, db: Session = Depends(get_db)):
+    login_id = payload.login_id
+    if "@" in login_id:
+        partner = db.query(DeliveryPartner).filter(DeliveryPartner.email == login_id).first()
+    else:
+        partner = db.query(DeliveryPartner).filter(DeliveryPartner.mobile_number == login_id).first()
+ 
+    if not partner or not verify_password(payload.password, partner.password):
+        raise HTTPException(status_code=401, detail="Invalid mobile number, email, or password")
+ 
+    if partner.status != "active":
+        raise HTTPException(status_code=403, detail="This delivery partner account has been disabled")
+ 
+    token = create_access_token({"partner_id": partner.partner_id, "role": "delivery"})
+ 
+    return {
+        "token": token,
+        "partner": {
+            "partner_id": partner.partner_id,
+            "name": partner.name,
+            "mobile_number": partner.mobile_number,
+            "email": partner.email,
+        },
+    }
+ 
+@app.get("/api/delivery/profile", response_model=DeliveryProfileResponse)
+def get_delivery_profile(current_partner: DeliveryPartner = Depends(get_current_delivery_partner)):
+    return current_partner
+ 
+@app.get("/api/delivery/dashboard-summary", response_model=DeliveryDashboardSummaryResponse)
+def get_delivery_dashboard_summary(current_partner: DeliveryPartner = Depends(get_current_delivery_partner), db: Session = Depends(get_db)):
+    today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+ 
+    today_deliveries = db.query(DeliveryAssignment).join(Order).filter(
+        DeliveryAssignment.delivery_partner_id == current_partner.id,
+        DeliveryAssignment.assigned_at >= today_start,
+        Order.order_status != "Cancelled"
+    ).count()
+ 
+    pending_deliveries = db.query(DeliveryAssignment).join(Order).filter(
+        DeliveryAssignment.delivery_partner_id == current_partner.id,
+        DeliveryAssignment.delivery_status != "Delivered",
+        Order.order_status != "Cancelled"
+    ).count()
+ 
+    completed_deliveries = db.query(DeliveryAssignment).join(Order).filter(
+        DeliveryAssignment.delivery_partner_id == current_partner.id,
+        DeliveryAssignment.delivery_status == "Delivered",
+        Order.order_status != "Cancelled"
+    ).count()
+ 
+    return {
+        "today_deliveries": today_deliveries,
+        "pending_deliveries": pending_deliveries,
+        "completed_deliveries": completed_deliveries,
+    }
+ 
+@app.get("/api/delivery/assigned-orders", response_model=List[AssignedOrderResponse])
+def get_my_assigned_orders(current_partner: DeliveryPartner = Depends(get_current_delivery_partner), db: Session = Depends(get_db)):
+    assignments = db.query(DeliveryAssignment).join(Order).filter(
+        DeliveryAssignment.delivery_partner_id == current_partner.id,
+        DeliveryAssignment.delivery_status != "Delivered",
+        Order.order_status != "Cancelled",
+    ).order_by(DeliveryAssignment.assigned_at.desc()).all()
+ 
+    result = []
+    for a in assignments:
+        order = a.order
+        address_text = f"{order.address.address}, {order.address.village}, {order.address.district}, {order.address.state} - {order.address.pincode}"
+        result.append({
+            "assignment_id": a.id,
+            "order_id": order.order_id,
+            "customer_name": order.customer.full_name,
+            "customer_mobile": order.customer.mobile_number,
+            "delivery_address": address_text,
+            "total_amount": order.total_amount,
+            "payment_method": order.payment_method,
+            "order_status": order.order_status,
+            "delivery_status": a.delivery_status,
+        })
+ 
+    return result
+ 
+@app.put("/api/delivery/assignments/{assignment_id}/status")
+def update_delivery_assignment_status(assignment_id: int, payload: UpdateDeliveryStatusRequest, current_partner: DeliveryPartner = Depends(get_current_delivery_partner), db: Session = Depends(get_db)):
+    assignment = db.query(DeliveryAssignment).filter(
+        DeliveryAssignment.id == assignment_id,
+        DeliveryAssignment.delivery_partner_id == current_partner.id,
+    ).first()
+ 
+    if not assignment:
+        raise HTTPException(status_code=404, detail="Delivery assignment not found")
+ 
+    valid_statuses = ["Assigned", "Accepted", "Picked Up", "Out for Delivery", "Delivered"]
+    if payload.status not in valid_statuses:
+        raise HTTPException(status_code=400, detail="Invalid delivery status")
+ 
+    assignment.delivery_status = payload.status
+ 
+    order = assignment.order
+    if payload.status == "Delivered":
+        assignment.delivered_at = datetime.utcnow()
+        order.order_status = "Delivered"
+        status_entry = OrderStatusHistory(order_id=order.order_id, status="Delivered")
+        db.add(status_entry)
+    elif payload.status == "Out for Delivery":
+        order.order_status = "Out for Delivery"
+        status_entry = OrderStatusHistory(order_id=order.order_id, status="Out for Delivery")
+        db.add(status_entry)
+ 
+    db.commit()
+ 
+    return {"message": "Delivery status updated successfully", "status": assignment.delivery_status}
+ 
+@app.get("/api/delivery/history", response_model=List[DeliveryHistoryResponse])
+def get_delivery_history(current_partner: DeliveryPartner = Depends(get_current_delivery_partner), db: Session = Depends(get_db)):
+    assignments = db.query(DeliveryAssignment).filter(
+        DeliveryAssignment.delivery_partner_id == current_partner.id,
+        DeliveryAssignment.delivery_status == "Delivered",
+    ).order_by(DeliveryAssignment.delivered_at.desc()).all()
+ 
+    result = []
+    for a in assignments:
+        order = a.order
+        result.append({
+            "assignment_id": a.id,
+            "order_id": order.order_id,
+            "customer_name": order.customer.full_name,
+            "total_amount": order.total_amount,
+            "order_status": order.order_status,
+            "delivered_at": a.delivered_at.strftime("%d %b %Y, %I:%M %p") if a.delivered_at else None,
+        })
+ 
+    return result

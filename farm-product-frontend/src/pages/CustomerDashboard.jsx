@@ -81,7 +81,7 @@ const CustomerDashboard = () => {
           {searchResults.length === 0 ? (
             <p className="text-gray-400 text-sm text-center py-8">No products found.</p>
           ) : (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
               {searchResults.map((product) => (
                 <ProductCard key={product.id} product={product} />
               ))}
@@ -96,7 +96,7 @@ const CustomerDashboard = () => {
 
           <div id="categories" className="px-4 py-5 scroll-mt-[110px]">
             <p className="font-bold text-gray-800 mb-3">Shop by Category</p>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-4">
               {categories.map((category) => (
                 <CategoryCard key={category.id} category={category} />
               ))}
@@ -108,7 +108,7 @@ const CustomerDashboard = () => {
             {featuredProducts.length === 0 ? (
               <p className="text-gray-400 text-sm text-center py-6">No featured products yet.</p>
             ) : (
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
                 {featuredProducts.map((product) => (
                   <ProductCard key={product.id} product={product} />
                 ))}
@@ -121,7 +121,7 @@ const CustomerDashboard = () => {
             {popularProducts.length === 0 ? (
               <p className="text-gray-400 text-sm text-center py-6">No popular products yet.</p>
             ) : (
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
                 {popularProducts.map((product) => (
                   <ProductCard key={product.id} product={product} />
                 ))}
