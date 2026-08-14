@@ -14,6 +14,8 @@ export const updateDeliveryAssignmentStatus = (assignmentId, status) =>
 
 export const getDeliveryHistory = () => api.get("/delivery/history");
 
+export const getDeliveryOrderDetails = (orderId) => api.get(`/delivery/orders/${orderId}`);
+
 export const getDeliveryPartners = () => api.get("/admin/delivery-partners");
 
 export const addDeliveryPartner = (data) => api.post("/admin/delivery-partners", data);

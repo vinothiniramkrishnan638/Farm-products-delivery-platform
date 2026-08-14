@@ -18,6 +18,7 @@ class ForgotPasswordRequest(BaseModel):
 
 class SendOtpRequest(BaseModel):
     mobile_number: str
+    
 
 class VerifyOtpRequest(BaseModel):
     mobile_number: str
@@ -151,6 +152,9 @@ class OrderDetailResponse(BaseModel):
     payment_method: str
     order_status: str
     created_at: str
+    delivery_partner_name: Optional[str] = None
+    delivery_partner_mobile: Optional[str] = None
+    estimated_delivery_time: Optional[str] = None
     delivery_address: OrderAddressResponse
     items: List[OrderItemResponse]
 
@@ -171,6 +175,7 @@ class OrderListResponse(BaseModel):
 class OrderStatusHistoryResponse(BaseModel):
     status: str
     updated_at: str
+    updated_by: Optional[str] = None
 
 
 class TrackOrderResponse(BaseModel):
@@ -266,6 +271,7 @@ class AdminOrderListResponse(BaseModel):
     payment_method: str
     order_status: str
     created_at: str
+    delivery_partner_name: Optional[str] = None
     items: List[AdminOrderItemResponse]
 
 
@@ -286,6 +292,7 @@ class AdminOrderDetailResponse(BaseModel):
     order_status: str
     created_at: str
     delivery_partner_name: Optional[str] = None
+    estimated_delivery_time: Optional[str] = None
     delivery_address: AdminOrderAddressResponse
     items: List[AdminOrderItemResponse]
 
@@ -296,7 +303,7 @@ class UpdateOrderStatusRequest(BaseModel):
 
 class AssignDeliveryRequest(BaseModel):
     delivery_partner_name: str
-
+class UpdateEstimatedDeliveryRequest(BaseModel): estimated_delivery_time: str
 
 class AdminCustomerResponse(BaseModel):
     customer_id: str
@@ -378,3 +385,17 @@ class PartnerAssignedOrderResponse(BaseModel):
     assignment_id: int
     order_id: str
     delivery_status: str
+
+
+class DeliveryOrderItemResponse(BaseModel):
+    product_name: str
+    quantity: int
+    price: float
+
+
+class DeliveryOrderDetailResponse(BaseModel):
+    order_id: str
+    customer_name: str
+    delivery_address: str
+    total_amount: float
+    items: List[DeliveryOrderItemResponse]

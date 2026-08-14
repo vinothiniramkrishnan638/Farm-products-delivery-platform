@@ -27,6 +27,11 @@ export const updateOrderStatus = (orderId, status) =>
 export const assignDeliveryPartner = (orderId, name) =>
   api.put(`/admin/orders/${orderId}/assign-delivery`, { delivery_partner_name: name });
 
+
+export const updateEstimatedDeliveryTime = (orderId, estimatedDeliveryTime) =>
+  api.put(`/admin/orders/${orderId}/estimated-delivery`, { estimated_delivery_time: estimatedDeliveryTime });
+export const getOrderTimeline = (orderId) => api.get(`/admin/orders/${orderId}/timeline`);
+export const cancelOrderAdmin = (orderId) => api.post(`/admin/orders/${orderId}/cancel`);
 export const getAdminCustomers = () => api.get("/admin/customers");
 export const toggleCustomerStatus = (customerId) =>
   api.put(`/admin/customers/${customerId}/toggle-status`);

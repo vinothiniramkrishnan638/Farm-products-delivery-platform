@@ -97,6 +97,7 @@ class Order(Base):
     order_status = Column(String(30), nullable=False, default="Pending")
     created_at = Column(TIMESTAMP, server_default=func.now())
     delivery_partner_name = Column(String(100), nullable=True)
+    estimated_delivery_time = Column(String(100), nullable=True)
 
     address: Mapped["CustomerAddress"] = relationship("CustomerAddress")
     customer: Mapped["Customer"] = relationship("Customer")
@@ -117,11 +118,12 @@ class OrderItem(Base):
     product: Mapped["Product"] = relationship("Product")    
     
 class OrderStatusHistory(Base):
-    __tablename__ = "order_status_history"
+    __tablename__ = "order_tracking"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     order_id = Column(String(20), ForeignKey("orders.order_id"), nullable=False)
     status = Column(String(30), nullable=False)
+    updated_by = Column(String(50), nullable=True, default="System")
     updated_at = Column(TIMESTAMP, server_default=func.now())
 
     order: Mapped["Order"] = relationship("Order", back_populates="status_history")
@@ -143,7 +145,7 @@ class DeliveryPartner(Base):
 
 
 class DeliveryAssignment(Base):
-    __tablename__ = "delivery_assignments"
+    __tablename__ = "delivery_history"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     order_id = Column(String(20), ForeignKey("orders.order_id"), nullable=False)

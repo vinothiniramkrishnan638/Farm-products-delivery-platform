@@ -152,3 +152,12 @@ CREATE TABLE IF NOT EXISTS delivery_assignments (
     FOREIGN KEY (order_id) REFERENCES orders(order_id),
     FOREIGN KEY (delivery_partner_id) REFERENCES delivery_partners(id)
 );
+ALTER TABLE orders ADD COLUMN estimated_delivery_time VARCHAR(100) NULL;
+
+ALTER TABLE orders MODIFY COLUMN order_status
+    ENUM('Pending','Confirmed','Preparing','Picked Up','Out for Delivery','Delivered','Cancelled')
+    NOT NULL DEFAULT 'Pending';
+
+ALTER TABLE order_status_history MODIFY COLUMN status
+    ENUM('Pending','Confirmed','Preparing','Picked Up','Out for Delivery','Delivered','Cancelled')
+    NOT NULL;

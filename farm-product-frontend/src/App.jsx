@@ -19,6 +19,7 @@ import Checkout from "./pages/Checkout";
 import OrderSuccess from "./pages/OrderSuccess";
 import MyOrders from "./pages/MyOrders";
 import OrderDetailsPage from "./pages/OrderDetailsPage";
+import OrderHistory from "./pages/OrderHistory";
 import AdminLogin from "./pages/admin/AdminLogin";
 import AdminDashboardHome from "./pages/admin/AdminDashboardHome";
 import AdminCategories from "./pages/admin/AdminCategories";
@@ -104,6 +105,14 @@ function App() {
                     </ProtectedRoute>
                   }
                 />
+                 <Route
+                  path="/my-orders/:orderId"
+                  element={
+                    <ProtectedRoute>
+                      <OrderDetailsPage />
+                    </ProtectedRoute>
+                  }
+                />
                 <Route
                   path="/order-details/:orderId"
                   element={
@@ -112,6 +121,15 @@ function App() {
                     </ProtectedRoute>
                   }
                 />
+                 <Route
+                  path="/order-history"
+                  element={
+                    <ProtectedRoute>
+                      <OrderHistory />
+                    </ProtectedRoute>
+                  }
+                />
+
 
                 <Route path="/admin/login" element={<AdminLogin />} />
                 <Route

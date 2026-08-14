@@ -403,3 +403,154 @@ textarea:focus {
   border-color: #3b82f6 !important;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15) !important;
 }
+
+/* --- Cohesive 3D Theme Enhancements --- */
+
+/* 3D Premium Font Style with Multi-layered Shadow */
+h1, h2, h3, .font-heading {
+  text-shadow: 1px 1px 0px rgba(0, 0, 0, 0.05), 
+               2px 2px 0px rgba(0, 0, 0, 0.04), 
+               3px 3px 0px rgba(0, 0, 0, 0.03);
+}
+
+/* Enhancing existing premium-card to have 3D bevel and deep shadows */
+.premium-card, .glass-card {
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.02),
+              0 10px 20px rgba(0, 0, 0, 0.04),
+              0 20px 40px rgba(0, 0, 0, 0.05),
+              inset 0 1px 0 rgba(255, 255, 255, 0.8) !important;
+  border-bottom: 3px solid rgba(229, 231, 235, 0.8) !important;
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), 
+              box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1), 
+              border-color 0.4s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.premium-card:hover, .glass-card:hover {
+  transform: translateY(-6px) scale(1.01) !important;
+  box-shadow: 0 15px 30px rgba(16, 185, 129, 0.08),
+              0 30px 60px rgba(16, 185, 129, 0.06),
+              inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
+  border-color: rgba(16, 185, 129, 0.3) !important;
+}
+
+/* 3D Push-Button (Tactile & Beveled) Enhancement */
+button[type="submit"], .btn-3d, .btn-3d-premium, .shimmer-button, .button-hover-glow {
+  position: relative;
+  border-bottom: 4px solid rgba(0, 0, 0, 0.28) !important;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05), 
+              0 8px 16px rgba(0, 0, 0, 0.05) !important;
+  transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), 
+              box-shadow 0.15s cubic-bezier(0.16, 1, 0.3, 1),
+              border-bottom-width 0.15s ease !important;
+}
+
+button[type="submit"]:hover:not(:disabled), .btn-3d:hover:not(:disabled), .btn-3d-premium:hover:not(:disabled), .shimmer-button:hover:not(:disabled), .button-hover-glow:hover:not(:disabled) {
+  transform: translateY(-2px) !important;
+  border-bottom-width: 6px !important;
+  box-shadow: 0 8px 12px rgba(0, 0, 0, 0.08), 
+              0 16px 32px rgba(0, 0, 0, 0.08) !important;
+}
+
+button[type="submit"]:active:not(:disabled), .btn-3d:active:not(:disabled), .btn-3d-premium:active:not(:disabled), .shimmer-button:active:not(:disabled), .button-hover-glow:active:not(:disabled) {
+  transform: translateY(2px) !important;
+  border-bottom-width: 1px !important;
+  box-shadow: 0 2px 3px rgba(0, 0, 0, 0.05) !important;
+}
+
+/* absolute positioning override for eye icons and absolute buttons */
+button.absolute {
+  position: absolute !important;
+  top: 0 !important;
+  bottom: 0 !important;
+  margin-top: auto !important;
+  margin-bottom: auto !important;
+  margin-right: 0 !important;
+  margin-left: 0 !important;
+  right: 12px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 !important;
+  background: transparent !important;
+  height: 20px !important;
+  width: 20px !important;
+  border-bottom: none !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+/* Cohesive Organic Background Overlay Pattern */
+body {
+  background-image: 
+    radial-gradient(rgba(16, 185, 129, 0.03) 1.5px, transparent 1.5px), 
+    radial-gradient(rgba(16, 185, 129, 0.03) 1.5px, transparent 1.5px) !important;
+  background-size: 40px 40px !important;
+  background-position: 0 0, 20px 20px !important;
+}
+
+/* --- High-Contrast Typography & Accessibility --- */
+
+/* Force all form labels to be dark bold black for clear readability */
+label, 
+.label-text, 
+.form-label {
+  color: #000000 !important;
+  font-weight: 700 !important;
+}
+
+/* Force gray utility text to be rich dark slate/black for contrast */
+.text-gray-400 {
+  color: #334155 !important; /* Rich Dark Gray for secondary text */
+  font-weight: 600 !important;
+}
+
+.text-gray-500, 
+.text-gray-600, 
+.text-gray-700 {
+  color: #000000 !important; /* Bold black for general body/subtexts */
+  font-weight: 600 !important;
+}
+
+/* Force high visibility for input text values */
+input, 
+select, 
+textarea {
+  color: #000000 !important;
+  font-weight: 600 !important;
+}
+
+/* Force clear placeholder styling for all input text fields */
+input::placeholder, 
+select::placeholder, 
+textarea::placeholder {
+  color: #475569 !important; /* Highly visible slate gray placeholder */
+  font-weight: 600 !important;
+}
+
+/* --- Advanced 3D Depth Styling --- */
+
+/* 3D Sunken (Inset) Effect for all Form Input Boxes */
+input, 
+select, 
+textarea {
+  box-shadow: inset 1px 1.5px 3px rgba(0, 0, 0, 0.16), 
+              inset -1px -1px 3px rgba(255, 255, 255, 0.8),
+              0 1px 2px rgba(0, 0, 0, 0.05) !important;
+  border: 1px solid rgba(0, 0, 0, 0.25) !important;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+input:focus, 
+select:focus, 
+textarea:focus {
+  border-color: #10b981 !important;
+  box-shadow: inset 1px 1.5px 3px rgba(16, 185, 129, 0.08),
+              0 0 0 3px rgba(16, 185, 129, 0.15) !important;
+}
+
+/* 3D Card Depth & Perspective Support */
+.glass-card, 
+.premium-card {
+  transform-style: preserve-3d !important;
+  perspective: 1000px !important;
+}

@@ -12,3 +12,5 @@ export const trackOrderStatus = (orderId) => api.get(`/orders/${orderId}/track`)
 export const cancelOrder = (orderId) => api.post(`/orders/${orderId}/cancel`);
 
 export const reorderOrder = (orderId) => api.post(`/orders/${orderId}/reorder`);
+
+export const getOrderHistory = () => api.get("/order-history");

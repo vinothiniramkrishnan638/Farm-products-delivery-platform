@@ -2,6 +2,7 @@ const trackingSteps = [
   "Order Placed",
   "Order Confirmed",
   "Preparing",
+  "Picked Up",
   "Out for Delivery",
   "Delivered",
 ];
@@ -10,8 +11,9 @@ const statusToStepIndex = {
   Pending: 0,
   Confirmed: 1,
   Preparing: 2,
-  "Out for Delivery": 3,
-  Delivered: 4,
+  "Picked Up": 3,
+  "Out for Delivery": 4,
+  Delivered: 5,
 };
 
 const OrderTrackingTimeline = ({ orderStatus }) => {
@@ -42,7 +44,7 @@ const OrderTrackingTimeline = ({ orderStatus }) => {
                 {isCompleted ? "✓" : index + 1}
               </div>
               {!isLast && (
-                <div className={`w-0.5 flex-1 min-h-[28px] ${isCompleted && index < currentStepIndex ? "bg-green-600" : "bg-gray-200"}`}></div>
+                <div className={`w-0.5 flex-1 min-h-7 ${isCompleted && index < currentStepIndex ? "bg-green-600" : "bg-gray-200"}`}></div>
               )}
             </div>
             <div className={`pb-6 ${isLast ? "pb-0" : ""}`}>

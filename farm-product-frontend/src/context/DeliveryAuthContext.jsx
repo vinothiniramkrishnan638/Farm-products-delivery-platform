@@ -13,14 +13,19 @@ export const DeliveryAuthProvider = ({ children }) => {
         if (token && savedData) {
             setPartner(JSON.parse(savedData));
             
-            // Sync with fresh backend profile details in case of admin updates
             getDeliveryProfile()
                 .then((res) => {
                     localStorage.setItem("deliveryData", JSON.stringify(res.data));
                     setPartner(res.data);
                 })
                 .catch((err) => {
-                    console.error("Failed to sync delivery profile:", err);
+                    if (err.response && err.response.status === 401) {
+                        localStorage.removeItem("deliveryToken");
+                        localStorage.removeItem("deliveryData");
+                        setPartner(null);
+                    } else {
+                        console.error("Failed to sync delivery profile:", err);
+                    }
                 });
         }
         setLoading(false);

@@ -23,7 +23,7 @@ from app.schemas import (
     AssignDeliveryRequest, AdminCustomerResponse,DeliveryLoginRequest, DeliveryPartnerRequest, DeliveryPartnerResponse,
     DeliveryProfileResponse, DeliveryDashboardSummaryResponse, AssignOrderRequest,
     UpdateDeliveryStatusRequest, AssignedOrderResponse, DeliveryHistoryResponse,
-    PartnerAssignedOrderResponse
+    PartnerAssignedOrderResponse, UpdateEstimatedDeliveryRequest, DeliveryOrderDetailResponse
 )
 
 
@@ -44,14 +44,12 @@ def run_db_migration():
     with engine.connect() as conn:
         trans = conn.begin()
         try:
-            # Add email column to admins
             try:
                 conn.execute(text("ALTER TABLE admins ADD COLUMN email VARCHAR(100) NULL UNIQUE;"))
             except Exception as ex:
                 if "Duplicate column name" not in str(ex):
                     raise ex
 
-            # Add delivery_partner_name column to orders
             try:
                 conn.execute(text("ALTER TABLE orders ADD COLUMN delivery_partner_name VARCHAR(100) NULL;"))
             except Exception as ex:
@@ -622,6 +620,13 @@ def place_order(payload: PlaceOrderRequest, current_customer: Customer = Depends
     )
     db.add(new_order)
 
+    initial_history = OrderStatusHistory(
+        order_id=new_order_id,
+        status="Pending",
+        updated_by="Customer"
+    )
+    db.add(initial_history)
+
     for item in cart_items:
         order_item = OrderItem(
             order_id=new_order_id,
@@ -661,9 +666,19 @@ def get_order_details(order_id: str, current_customer: Customer = Depends(get_cu
         for item in order.items
     ]
 
-    # Calculate subtotal to determine delivery charge
     subtotal = sum(float(item.price) * item.quantity for item in order.items)
     delivery_charge = 0 if subtotal >= 500 or subtotal == 0 else 40
+
+    delivery_partner_name = order.delivery_partner_name
+    delivery_partner_mobile = None
+    assignment = db.query(DeliveryAssignment).filter(DeliveryAssignment.order_id == order.order_id).first()
+    if assignment and assignment.partner:
+        delivery_partner_name = assignment.partner.name
+        delivery_partner_mobile = assignment.partner.mobile_number
+    elif delivery_partner_name:
+        partner = db.query(DeliveryPartner).filter(DeliveryPartner.name.ilike(delivery_partner_name)).first()
+        if partner:
+            delivery_partner_mobile = partner.mobile_number
 
     return {
         "order_id": order.order_id,
@@ -672,6 +687,9 @@ def get_order_details(order_id: str, current_customer: Customer = Depends(get_cu
         "payment_method": order.payment_method,
         "order_status": order.order_status,
         "created_at": order.created_at.strftime("%d %b %Y, %I:%M %p"),
+        "estimated_delivery_time": order.estimated_delivery_time,
+        "delivery_partner_name": delivery_partner_name,
+        "delivery_partner_mobile": delivery_partner_mobile,
         "delivery_address": {
             "full_name": order.address.full_name,
             "mobile_number": order.address.mobile_number,
@@ -688,6 +706,35 @@ def get_order_details(order_id: str, current_customer: Customer = Depends(get_cu
 def get_customer_orders(current_customer: Customer = Depends(get_current_customer), db: Session = Depends(get_db)):
     orders = db.query(Order).filter(
         Order.customer_id == current_customer.customer_id
+    ).order_by(Order.created_at.desc(), Order.order_id.desc()).all()
+
+    result = []
+    for order in orders:
+        items = [
+            {
+                "product_name": item.product.product_name,
+                "product_image": item.product.product_image,
+                "quantity": item.quantity,
+                "price": item.price,
+            }
+            for item in order.items
+        ]
+        result.append({
+            "order_id": order.order_id,
+            "total_amount": order.total_amount,
+            "payment_method": order.payment_method,
+            "order_status": order.order_status,
+            "created_at": order.created_at.strftime("%d %b %Y, %I:%M %p"),
+            "items": items,
+        })
+
+    return result
+
+@app.get("/api/order-history", response_model=List[OrderListResponse])
+def get_customer_order_history(current_customer: Customer = Depends(get_current_customer), db: Session = Depends(get_db)):
+    orders = db.query(Order).filter(
+        Order.customer_id == current_customer.customer_id,
+        Order.order_status.in_(["Delivered", "Cancelled"])
     ).order_by(Order.created_at.desc(), Order.order_id.desc()).all()
 
     result = []
@@ -730,6 +777,7 @@ def track_order_status(order_id: str, current_customer: Customer = Depends(get_c
         {
             "status": entry.status,
             "updated_at": entry.updated_at.strftime("%d %b %Y, %I:%M %p"),
+            "updated_by": entry.updated_by,
         }
         for entry in history_entries
     ]
@@ -756,12 +804,12 @@ def cancel_order(order_id: str, current_customer: Customer = Depends(get_current
     order.order_status = "Cancelled"
     order.delivery_partner_name = None
 
-    # Delete delivery assignment if exists
     db.query(DeliveryAssignment).filter(DeliveryAssignment.order_id == order_id).delete()
 
     status_entry = OrderStatusHistory(
         order_id=order_id,
         status="Cancelled",
+        updated_by="Customer",
     )
     db.add(status_entry)
 
@@ -862,7 +910,6 @@ def get_admin_profile(current_admin: Admin = Depends(get_current_admin)):
     return current_admin
 
 
-# ---------------- MODULE 6: DASHBOARD SUMMARY ----------------
 
 @app.get("/api/admin/dashboard-summary", response_model=DashboardSummaryResponse)
 def get_dashboard_summary(current_admin: Admin = Depends(get_current_admin), db: Session = Depends(get_db)):
@@ -888,7 +935,6 @@ def get_dashboard_summary(current_admin: Admin = Depends(get_current_admin), db:
     }
 
 
-# ---------------- MODULE 6: CATEGORY MANAGEMENT ----------------
 
 @app.get("/api/admin/categories", response_model=List[AdminCategoryResponse])
 def admin_get_categories(current_admin: Admin = Depends(get_current_admin), db: Session = Depends(get_db)):
@@ -959,7 +1005,6 @@ def admin_toggle_category_status(category_id: int, current_admin: Admin = Depend
     return {"message": "Category status updated successfully", "status": category.status}
 
 
-# ---------------- MODULE 6: PRODUCT MANAGEMENT ----------------
 
 @app.get("/api/admin/products", response_model=List[AdminProductResponse])
 def admin_get_products(current_admin: Admin = Depends(get_current_admin), db: Session = Depends(get_db)):
@@ -1074,7 +1119,6 @@ def admin_toggle_product_status(product_id: int, current_admin: Admin = Depends(
     return {"message": "Product status updated successfully", "status": product.status}
 
 
-# ---------------- MODULE 6: ORDER MANAGEMENT ----------------
 
 @app.get("/api/admin/orders", response_model=List[AdminOrderListResponse])
 def admin_get_orders(current_admin: Admin = Depends(get_current_admin), db: Session = Depends(get_db)):
@@ -1093,6 +1137,7 @@ def admin_get_orders(current_admin: Admin = Depends(get_current_admin), db: Sess
             "payment_method": order.payment_method,
             "order_status": order.order_status,
             "created_at": order.created_at.strftime("%d %b %Y, %I:%M %p"),
+            "delivery_partner_name": order.delivery_partner_name,
             "items": items,
         })
 
@@ -1118,6 +1163,7 @@ def admin_get_order_details(order_id: str, current_admin: Admin = Depends(get_cu
         "order_status": order.order_status,
         "created_at": order.created_at.strftime("%d %b %Y, %I:%M %p"),
         "delivery_partner_name": order.delivery_partner_name,
+        "estimated_delivery_time": order.estimated_delivery_time,
         "delivery_address": {
             "address": order.address.address,
             "village": order.address.village,
@@ -1134,7 +1180,7 @@ def admin_update_order_status(order_id: str, payload: UpdateOrderStatusRequest, 
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
 
-    valid_statuses = ["Pending", "Confirmed", "Preparing", "Out for Delivery", "Delivered", "Cancelled"]
+    valid_statuses = ["Pending", "Confirmed", "Preparing", "Picked Up", "Out for Delivery", "Delivered", "Cancelled"]
     if payload.status not in valid_statuses:
         raise HTTPException(status_code=400, detail="Invalid order status")
 
@@ -1143,7 +1189,7 @@ def admin_update_order_status(order_id: str, payload: UpdateOrderStatusRequest, 
         order.delivery_partner_name = None
         db.query(DeliveryAssignment).filter(DeliveryAssignment.order_id == order_id).delete()
 
-    status_entry = OrderStatusHistory(order_id=order_id, status=payload.status)
+    status_entry = OrderStatusHistory(order_id=order_id, status=payload.status, updated_by="Admin")
     db.add(status_entry)
 
     db.commit()
@@ -1156,10 +1202,72 @@ def admin_assign_delivery(order_id: str, payload: AssignDeliveryRequest, current
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
 
-    order.delivery_partner_name = payload.delivery_partner_name
+    if not payload.delivery_partner_name:
+        order.delivery_partner_name = None
+        db.query(DeliveryAssignment).filter(DeliveryAssignment.order_id == order_id).delete()
+        db.commit()
+        return {"message": "Delivery partner unassigned successfully"}
+
+    partner = db.query(DeliveryPartner).filter(DeliveryPartner.name == payload.delivery_partner_name).first()
+    if not partner:
+        raise HTTPException(status_code=404, detail="Delivery partner not found")
+
+    if partner.status != "active":
+        raise HTTPException(status_code=400, detail="Cannot assign an order to a disabled delivery partner")
+
+    existing_assignment = db.query(DeliveryAssignment).filter(DeliveryAssignment.order_id == order_id).first()
+    if existing_assignment:
+        if existing_assignment.delivery_partner_id != partner.id:
+            raise HTTPException(status_code=400, detail="This order is already assigned to a delivery partner")
+        return {"message": "Delivery partner assigned successfully"}
+
+    new_assignment = DeliveryAssignment(
+        order_id=order_id,
+        delivery_partner_id=partner.id,
+        delivery_status="Assigned"
+    )
+    db.add(new_assignment)
+    order.delivery_partner_name = partner.name
     db.commit()
 
     return {"message": "Delivery partner assigned successfully"}
+
+
+@app.put("/api/admin/orders/{order_id}/estimated-delivery")
+def admin_update_estimated_delivery(order_id: str, payload: UpdateEstimatedDeliveryRequest, current_admin: Admin = Depends(get_current_admin), db: Session = Depends(get_db)):
+    order = db.query(Order).filter(Order.order_id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    order.estimated_delivery_time = payload.estimated_delivery_time
+    db.commit()
+
+    return {"message": "Estimated delivery time updated successfully"}
+
+
+@app.post("/api/admin/orders/{order_id}/cancel")
+def admin_cancel_order(order_id: str, current_admin: Admin = Depends(get_current_admin), db: Session = Depends(get_db)):
+    order = db.query(Order).filter(Order.order_id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    if order.order_status in ["Delivered", "Cancelled"]:
+        raise HTTPException(status_code=400, detail="Cannot cancel a delivered or already cancelled order")
+
+    order.order_status = "Cancelled"
+    order.delivery_partner_name = None
+    
+    db.query(DeliveryAssignment).filter(DeliveryAssignment.order_id == order_id).delete()
+
+    status_entry = OrderStatusHistory(
+        order_id=order_id,
+        status="Cancelled",
+        updated_by="Admin"
+    )
+    db.add(status_entry)
+    db.commit()
+
+    return {"message": "Order cancelled successfully"}
 
 
 
@@ -1426,17 +1534,49 @@ def update_delivery_assignment_status(assignment_id: int, payload: UpdateDeliver
     if payload.status == "Delivered":
         assignment.delivered_at = datetime.utcnow()
         order.order_status = "Delivered"
-        status_entry = OrderStatusHistory(order_id=order.order_id, status="Delivered")
-        db.add(status_entry)
-    elif payload.status == "Out for Delivery":
-        order.order_status = "Out for Delivery"
-        status_entry = OrderStatusHistory(order_id=order.order_id, status="Out for Delivery")
-        db.add(status_entry)
+    elif payload.status in ["Picked Up", "Out for Delivery"]:
+        order.order_status = payload.status
+
+    status_entry = OrderStatusHistory(
+        order_id=order.order_id,
+        status=payload.status,
+        updated_by="Delivery Partner"
+    )
+    db.add(status_entry)
  
     db.commit()
  
     return {"message": "Delivery status updated successfully", "status": assignment.delivery_status}
- 
+
+
+@app.get("/api/delivery/orders/{order_id}", response_model=DeliveryOrderDetailResponse)
+def get_delivery_order_details(order_id: str, current_partner: DeliveryPartner = Depends(get_current_delivery_partner), db: Session = Depends(get_db)):
+    assignment = db.query(DeliveryAssignment).filter(
+        DeliveryAssignment.order_id == order_id,
+        DeliveryAssignment.delivery_partner_id == current_partner.id
+    ).first()
+    if not assignment:
+        raise HTTPException(status_code=404, detail="Order details not found or not assigned to you")
+
+    order = assignment.order
+    items = [
+        {
+            "product_name": item.product.product_name,
+            "quantity": item.quantity,
+            "price": item.price
+        }
+        for item in order.items
+    ]
+
+    return {
+        "order_id": order.order_id,
+        "customer_name": order.customer.full_name,
+        "delivery_address": f"{order.address.address}, {order.address.village}, {order.address.district}, {order.address.state} - {order.address.pincode}",
+        "total_amount": order.total_amount,
+        "items": items
+    }
+
+
 @app.get("/api/delivery/history", response_model=List[DeliveryHistoryResponse])
 def get_delivery_history(current_partner: DeliveryPartner = Depends(get_current_delivery_partner), db: Session = Depends(get_db)):
     assignments = db.query(DeliveryAssignment).filter(
